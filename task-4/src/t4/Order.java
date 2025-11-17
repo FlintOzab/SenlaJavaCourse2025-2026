@@ -13,30 +13,45 @@ class Order {
         COMPLETED,
         CANCELLED
     }
-    
+       
     private static int orderCounter = 0;
+    private int id;
     private int orderId;
     private List<Book> books;
     private OrderStatus status;
     private Date creationDate;
     private Date completionDate;
     
-    public Order(int Id, List<Book> books) {
-        this.orderId = Id;
+    public Order(int orderId, List<Book> books) {
+        this.id = orderCounter++;
+        this.orderId = orderId;
         this.books = new ArrayList<>(books);
         this.status = OrderStatus.NEW;
         this.creationDate = new Date();
-        orderCounter++;
     }
     
-    public void setCompletionDate(Date date) { this.completionDate = date; }
-    public void setStatus(OrderStatus status) { this.status = status; }
+    public Order(int id, int orderId, List<Book> books, OrderStatus status, 
+                 Date creationDate, Date completionDate) {
+        this.id = id;
+        this.orderId = orderId;
+        this.books = new ArrayList<>(books);
+        this.status = status;
+        this.creationDate = creationDate;
+        this.completionDate = completionDate;
+        orderCounter = Math.max(orderCounter, id + 1);
+    }
     
+    public int getId() { return id; }
     public int getOrderId() { return orderId; }
     public List<Book> getBooks() { return this.books; }
     public OrderStatus getStatus() { return this.status; }
     public Date getCreationDate() { return this.creationDate; }
     public Date getCompletionDate() { return this.completionDate; }
+    
+    public void setId(int id) { this.id = id; }
+    public void setCompletionDate(Date date) { this.completionDate = date; }
+    public void setStatus(OrderStatus status) { this.status = status; }
+    public void setBooks(List<Book> books) { this.books = books; }
     
     public long getTotalPrice() {
         return books.stream().mapToLong(Book::getPrice).sum();
@@ -63,11 +78,19 @@ class Order {
         this.setStatus(OrderStatus.CANCELLED);
     }
     
-    public void getRequestsOnBooksOutOfStock(List<Request> existingRequests) {
-        for (Book book : getOutOfStockBooks()) {
-            if (!existingRequests.stream().anyMatch(stock -> stock.matchesBook(book))) {
-                existingRequests.add(new Request(this, book));
-            }
-        }
+    @Override
+    public String toString() {
+        return String.format("ID: %d, Order #%d - Status: %s - Total: %d руб.", 
+                           id, orderId, status, getTotalPrice());
+    }
+    
+    public String toCSV() {
+        String bookIds = books.stream()
+                .map(book -> String.valueOf(book.getId()))
+                .collect(Collectors.joining(";"));
+        return String.format("%d,%d,%s,%s,%s,%s",
+                id, orderId, bookIds, status,
+                creationDate.getTime(),
+                completionDate != null ? String.valueOf(completionDate.getTime()) : "");
     }
 }
