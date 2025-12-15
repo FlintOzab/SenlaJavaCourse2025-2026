@@ -52,7 +52,7 @@ public class Request {
     
     public String toCSV() {
         return String.format("%d,%d,%d,%d,%s",
-                id, requestId, order.getId(), book.getId(), done);
+                id, requestId, order.getOrderId(), book.getId(), done);
     }
 }
 	

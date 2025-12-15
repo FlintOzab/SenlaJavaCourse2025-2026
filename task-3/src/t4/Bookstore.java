@@ -12,7 +12,6 @@ public class Bookstore {
 	private List<Order> orders;
 	
 	public Bookstore() {
-		// TODO Auto-generated constructor stub
         this.bookInventory = new ArrayList<>();
         this.existingRequests = new ArrayList<>();
         this.orders = new ArrayList<>();

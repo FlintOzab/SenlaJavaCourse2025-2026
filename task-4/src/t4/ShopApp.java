@@ -3,87 +3,77 @@ package t4;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ShopApp {
-	private final BookstoreController controller;
-    private final UIFactory uiFactory;
-    private final Menu menu;
+    private final BookstoreController controller;
+    private final ConsoleMenuController menuController;
     private final Display display;
     private final Input input;
     
     public ShopApp() {
         Bookstore service = new Bookstore();
         this.controller = new BookstoreController(service);
-        this.uiFactory = new ConsoleUIFactory();
-        this.menu = uiFactory.createMenu();
-        this.display = uiFactory.createDisplay();
-        this.input = uiFactory.createInput();
+        this.display = ConsoleDisplay.getInstance();
+        this.input = ConsoleInput.getInstance();
+        this.menuController = new ConsoleMenuController(display, input);
     }
     
     public void run() {
-        while (true) {
-            menu.showMainMenu();
-            int choice = input.readInt("Выберите опцию");
-            
-            switch (choice) {
-                case 1 -> handleBookManagement();
-                case 2 -> handleOrderManagement();
-                case 3 -> handleAnalytics();
-                case 0 -> {
-                    display.showMessage("До свидания!");
-                    return;
-                }
-                default -> display.showError("Неверный выбор");
-            }
+        Menu mainMenu = createMainMenu();
+        menuController.execute(mainMenu);
+        try {
+            controller.saveAllData();
+            display.showMessage("Данные сохранены");
+        } catch (Exception e) {
+            display.showError("Ошибка при сохранении данных: " + e.getMessage());
         }
     }
     
-    private void handleBookManagement() {
-        while (true) {
-            menu.showBookMenu();
-            int choice = input.readInt("Выберите опцию");
-            
-            switch (choice) {
-                case 1 -> addBook();
-                case 2 -> viewBooks();
-                case 3 -> viewBookDetails();
-                case 4 -> writeOffBook();
-                case 0 -> { return; }
-                default -> display.showError("Неверный выбор");
-            }
-        }
+    private Menu createMainMenu() {
+        return MenuBuilder.builder("Главное меню")
+            .addItem("Управление книгами", () -> menuController.execute(createBookMenu()))
+            .addItem("Управление заказами", () -> menuController.execute(createOrderMenu()))
+            .addItem("Дополнительные функции", () -> menuController.execute(createAnalyticsMenu()))
+            .addItem("Импорт/Экспорт данных", () -> menuController.execute(createImportExportMenu()))
+            .build();
     }
     
-    private void handleOrderManagement() {
-        while (true) {
-            menu.showOrderMenu();
-            int choice = input.readInt("Выберите опцию");
-            
-            switch (choice) {
-                case 1 -> createOrder();
-                case 2 -> viewOrders();
-                case 3 -> viewOrderDetails();
-                case 4 -> cancelOrder();
-                case 5 -> updateOrderStatus();
-                case 0 -> { return; }
-                default -> display.showError("Неверный выбор");
-            }
-        }
+    private Menu createBookMenu() {
+        return MenuBuilder.builder("Управление книгами")
+            .addItem("Добавить книгу", this::addBook)
+            .addItem("Просмотр книг", this::viewBooks)
+            .addItem("Детали книги", this::viewBookDetails)
+            .addItem("Списать книгу", this::writeOffBook)
+            .build();
     }
     
-    private void handleAnalytics() {
-        while (true) {
-            menu.showAnalyticsMenu();
-            int choice = input.readInt("Выберите опцию");
-            
-            switch (choice) {
-                case 1 -> viewOldBooks();
-                case 2 -> viewRevenue();
-                case 3 -> viewCompletedOrders();
-                case 0 -> { return; }
-                default -> display.showError("Неверный выбор");
-            }
-        }
+    private Menu createOrderMenu() {
+        return MenuBuilder.builder("Управление заказами")
+            .addItem("Создать заказ", this::createOrder)
+            .addItem("Просмотр заказов", this::viewOrders)
+            .addItem("Детали заказа", this::viewOrderDetails)
+            .addItem("Отменить заказ", this::cancelOrder)
+            .addItem("Завершить заказ", this::completeOrder)
+            .addItem("Обновить статус заказа", this::updateOrderStatus)
+            .build();
+    }
+    
+    private Menu createAnalyticsMenu() {
+        return MenuBuilder.builder("Дополнительные функции")
+            .addItem("Просмотр залежавшихся книг", this::viewOldBooks)
+            .addItem("Просмотр выручки", this::viewRevenue)
+            .addItem("Завершенные заказы за период", this::viewCompletedOrders)
+            .build();
+    }
+    
+    private Menu createImportExportMenu() {
+        return MenuBuilder.builder("Импорт/Экспорт данных")
+            .addItem("Экспорт книг в CSV", this::exportBooks)
+            .addItem("Импорт книг из CSV", this::importBooks)
+            .addItem("Экспорт заказов в CSV", this::exportOrders)
+            .addItem("Импорт заказов из CSV", this::importOrders)
+            .build();
     }
     
     private void addBook() {
@@ -106,7 +96,12 @@ public class ShopApp {
     
     private void viewBooks() {
         List<Book> books = controller.getAllBooks();
-        display.showList(books);
+        display.showMessage("Доступные книги (ID, Название, Автор, Цена, Статус):");
+        books.forEach(book -> display.showMessage(
+            String.format("ID: %d - %s, %s, %d руб., %s", 
+                book.getId(), book.getTitle(), book.getAuthor(), 
+                book.getPrice(), book.getStatus())
+        ));
     }
     
     private void viewBookDetails() {
@@ -118,19 +113,46 @@ public class ShopApp {
     private void writeOffBook() {
         String isbn = input.readString("Введите ISBN книги для списания");
         try {
-			controller.writeOffBook(isbn);
-		} catch (BookstoreException e) {
-			e.printStackTrace();
-		}
-        display.showMessage("Книга списана");
+            controller.writeOffBook(isbn);
+            display.showMessage("Книга списана");
+        } catch (BookstoreException e) {
+            display.showError("Ошибка при списании книги: " + e.getMessage());
+        }
     }
     
     private void createOrder() {
         try {
-            int orderId = input.readInt("ID заказа");
-            List<Book> books = new ArrayList<>();
-            books.addAll(controller.getAllBooks());
-            Order order = controller.createOrder(orderId, books);
+            List<Book> availableBooks = controller.getAllBooks().stream()
+                .filter(book -> book.getStatus() == Book.BookStatus.IN_STOCK)
+                .collect(Collectors.toList());
+            
+            if (availableBooks.isEmpty()) {
+                display.showError("Нет доступных книг для заказа");
+                return;
+            }
+            
+            display.showMessage("Доступные книги:");
+            availableBooks.forEach(book -> display.showMessage(
+                String.format("ID: %d - %s, %s, %d руб.", 
+                    book.getId(), book.getTitle(), book.getAuthor(), book.getPrice())
+            ));
+            
+            int orderNumber = input.readInt("Введите номер заказа");
+            display.showMessage("Введите ID книг для заказа (через запятую):");
+            String booksInput = input.readString("ID книг");
+            String[] bookIdStrings = booksInput.split(",");
+            List<Integer> bookIds = new ArrayList<>();
+            
+            for (String idStr : bookIdStrings) {
+                try {
+                    bookIds.add(Integer.parseInt(idStr.trim()));
+                } catch (NumberFormatException e) {
+                    display.showError("Некорректный ID книги: " + idStr);
+                    return;
+                }
+            }
+            
+            Order order = controller.createOrder(orderNumber, bookIds);
             display.showMessage("Заказ создан: " + order);
         } catch (Exception e) {
             display.showError("Ошибка при создании заказа: " + e.getMessage());
@@ -139,27 +161,42 @@ public class ShopApp {
     
     private void viewOrders() {
         List<Order> orders = controller.getAllOrders();
-        display.showList(orders);
+        if (orders.isEmpty()) {
+            display.showMessage("Нет заказов");
+        } else {
+            display.showMessage("Все заказы:");
+            display.showList(orders);
+        }
     }
     
     private void viewOrderDetails() {
-        int orderId = input.readInt("Введите ID заказа");
+        int orderId = input.readInt("Введите номер заказа");
         String details = controller.getOrderDetails(orderId);
         display.showMessage(details);
     }
     
     private void cancelOrder() {
-        int orderId = input.readInt("Введите ID заказа для отмены");
+        int orderId = input.readInt("Введите номер заказа для отмены");
         try {
-			controller.cancelOrder(orderId);
-		} catch (BookstoreException e) {
-			e.printStackTrace();
-		}
-        display.showMessage("Заказ отменен");
+            controller.cancelOrder(orderId);
+            display.showMessage("Заказ отменен");
+        } catch (BookstoreException e) {
+            display.showError("Ошибка при отмене заказа: " + e.getMessage());
+        }
+    }
+    
+    private void completeOrder() {
+        int orderId = input.readInt("Введите номер заказа для завершения");
+        try {
+            controller.completeOrder(orderId);
+            display.showMessage("Заказ успешно завершен");
+        } catch (BookstoreException e) {
+            display.showError("Ошибка при завершении заказа: " + e.getMessage());
+        }
     }
     
     private void updateOrderStatus() {
-        int orderId = input.readInt("Введите ID заказа");
+        int orderId = input.readInt("Введите номер заказа");
         display.showMessage("Доступные статусы: NEW, COMPLETED, CANCELLED");
         String statusStr = input.readString("Введите новый статус");
         
@@ -167,15 +204,21 @@ public class ShopApp {
             Order.OrderStatus status = Order.OrderStatus.valueOf(statusStr.toUpperCase());
             controller.updateOrderStatus(orderId, status);
             display.showMessage("Статус заказа обновлен");
-        } catch (IllegalArgumentException | BookstoreException e) {
+        } catch (IllegalArgumentException e) {
             display.showError("Неверный статус");
+        } catch (BookstoreException e) {
+            display.showError("Ошибка обновления статуса: " + e.getMessage());
         }
     }
     
     private void viewOldBooks() {
         List<Book> staleBooks = controller.getOldBooks();
-        display.showMessage("Залежавшиеся книги:");
-        display.showList(staleBooks);
+        if (staleBooks.isEmpty()) {
+            display.showMessage("Нет залежавшихся книг");
+        } else {
+            display.showMessage("Залежавшиеся книги (более 6 месяцев без продаж):");
+            display.showList(staleBooks);
+        }
     }
     
     private void viewRevenue() {
@@ -195,8 +238,52 @@ public class ShopApp {
         Date startDate = input.readDate("Начальная дата периода");
         Date endDate = input.readDate("Конечная дата периода");
         List<Order> orders = controller.getCompletedOrdersInPeriod(startDate, endDate);
-        display.showMessage("Завершенные заказы за период:");
-        display.showList(orders);
+        
+        if (orders.isEmpty()) {
+            display.showMessage("Нет завершенных заказов за указанный период");
+        } else {
+            display.showMessage("Завершенные заказы за период:");
+            display.showList(orders);
+        }
     }
     
+    private void exportBooks() {
+        String filePath = input.readString("Введите путь для сохранения файла (например: books_export.csv)");
+        try {
+            controller.exportBooksToCSV(filePath);
+            display.showMessage("Книги успешно экспортированы в " + filePath);
+        } catch (BookstoreException e) {
+            display.showError("Ошибка при экспорте книг: " + e.getMessage());
+        }
+    }
+    
+    private void importBooks() {
+        String filePath = input.readString("Введите путь к файлу для импорта");
+        try {
+            controller.importBooksFromCSV(filePath);
+            display.showMessage("Книги успешно импортированы из " + filePath);
+        } catch (BookstoreException e) {
+            display.showError("Ошибка при импорте книг: " + e.getMessage());
+        }
+    }
+    
+    private void exportOrders() {
+        String filePath = input.readString("Введите путь для сохранения файла (например: orders_export.csv)");
+        try {
+            controller.exportOrdersToCSV(filePath);
+            display.showMessage("Заказы успешно экспортированы в " + filePath);
+        } catch (BookstoreException e) {
+            display.showError("Ошибка при экспорте заказов: " + e.getMessage());
+        }
+    }
+    
+    private void importOrders() {
+        String filePath = input.readString("Введите путь к файлу для импорта");
+        try {
+            controller.importOrdersFromCSV(filePath);
+            display.showMessage("Заказы успешно импортированы из " + filePath);
+        } catch (BookstoreException e) {
+            display.showError("Ошибка при импорте заказов: " + e.getMessage());
+        }
+    }
 }

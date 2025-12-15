@@ -54,18 +54,42 @@ public class Bookstore {
         book.setStatus(BookStatus.OUT_OF_STOCK);
     }
     
-    public Order createOrder(int id, List<Book> books) throws ValidationException {
-        if (books == null || books.isEmpty()) {
+    public Order createOrder(int orderId, List<Integer> bookIds) throws ValidationException {
+        if (bookIds == null || bookIds.isEmpty()) {
             throw new ValidationException("Заказ должен содержать хотя бы одну книгу");
         }
-        if (findOrderById(id) != null) {
-            throw new ValidationException("Заказ с ID " + id + " уже существует");
+        if (findOrderById(orderId) != null) {
+            throw new ValidationException("Заказ с номером " + orderId + " уже существует");
         }
         
-        Order order = new Order(id, books);
+        List<Book> selectedBooks = new ArrayList<>();
+        for (int bookId : bookIds) {
+            Book book = findBookById(bookId);
+            if (book == null) {
+                throw new ValidationException("Книга с ID " + bookId + " не найдена");
+            }
+            selectedBooks.add(book);
+        }
+        
+        Order order = new Order(orderId, selectedBooks);
         orders.add(order);
         getRequestsOnBooksOutOfStock(order);
         return order;
+    }
+    
+    public void completeOrder(int orderId) throws EntityNotFoundException, ValidationException {
+        Order order = findOrderById(orderId);
+        if (order == null) {
+            throw new EntityNotFoundException("Заказ с номером " + orderId + " не найден");
+        }
+        if (order.getStatus() != Order.OrderStatus.NEW) {
+            throw new ValidationException("Можно завершать только новые заказы");
+        }
+        if (order.containsOutOfStockBooks()) {
+            throw new ValidationException("Невозможно завершить заказ с отсутствующими книгами");
+        }
+        
+        order.completeOrder();
     }
 
     public void cancelOrder(int orderId) throws EntityNotFoundException, ValidationException {
@@ -160,6 +184,10 @@ public class Bookstore {
         existing.setPublicationDate(imported.getPublicationDate());
         existing.setArrivalDate(imported.getArrivalDate());
         existing.setDescription(imported.getDescription());
+    }
+    
+    public void importOrdersFromCSV(String filePath) throws BookstoreException {
+        csvService.importOrdersFromCSV(filePath);
     }
     
     public void exportBooksToCSV(String filePath) throws BookstoreException {
@@ -339,6 +367,22 @@ public class Bookstore {
             return sb.toString();
         } else {
             return "Книга с ISBN " + isbn + " не найдена";
+        }
+    }
+    
+    private void loadInitialData() throws BookstoreException{
+        try {
+            importBooksFromCSV("books.csv");
+            importOrdersFromCSV("orders.csv");
+        } catch (BookstoreException e) {
+        }
+    }
+    
+    public void saveAllData() throws BookstoreException{
+        try {
+            exportBooksToCSV("books.csv");
+            exportOrdersToCSV("orders.csv");
+        } catch (BookstoreException e) {
         }
     }
 }

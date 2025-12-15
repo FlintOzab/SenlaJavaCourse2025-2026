@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CSVService {
+	
 	public void exportBooksToCSV(List<Book> books, String filePath) throws BookstoreException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
             writer.println("ID,ISBN,Title,Author,Price,Status,PublicationDate,ArrivalDate,Description");
@@ -36,13 +37,31 @@ public class CSVService {
     
     public void exportOrdersToCSV(List<Order> orders, String filePath) throws BookstoreException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
-            writer.println("ID,OrderID,BookIDs,Status,CreationDate,CompletionDate");
+            writer.println("OrderID,BookIDs,Status,CreationDate,CompletionDate");
             for (Order order : orders) {
                 writer.println(order.toCSV());
             }
         } catch (IOException e) {
             throw new BookstoreException("Ошибка экспорта заказов в CSV: " + e.getMessage(), e);
         }
+    }
+    
+    public List<Order> importOrdersFromCSV(String filePath) throws BookstoreException {
+        List<Order> orders = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line = reader.readLine();
+            while ((line = reader.readLine()) != null) {
+                try {
+                    Order order = Order.fromCSV(line);
+                    orders.add(order);
+                } catch (CSVImportException e) {
+                    System.err.println("Пропуск строки заказа из-за ошибки: " + e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            throw new BookstoreException("Ошибка импорта заказов из CSV: " + e.getMessage(), e);
+        }
+        return orders;
     }
     
     public void exportRequestsToCSV(List<Request> requests, String filePath) throws BookstoreException {

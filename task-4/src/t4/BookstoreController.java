@@ -3,137 +3,109 @@ import java.util.Date;
 import java.util.List;
 
 public class BookstoreController {
-	private final Bookstore Bookstore;
+    private final Bookstore bookstore;
     
-    public BookstoreController(Bookstore Bookstore) {
-        this.Bookstore = Bookstore;
+    public BookstoreController(Bookstore bookstore) {
+        this.bookstore = bookstore;
     }
     
     public void addBook(Book book) throws BookstoreException {
-        Bookstore.addBookToInventory(book);
+        try {
+            bookstore.addBookToInventory(book);
+        } catch (ValidationException e) {
+            throw new BookstoreException("Ошибка добавления книги: " + e.getMessage(), e);
+        }
     }
     
     public void writeOffBook(String isbn) throws BookstoreException {
-        Bookstore.writeOffBook(isbn);
+        try {
+            bookstore.writeOffBook(isbn);
+        } catch (EntityNotFoundException e) {
+            throw new BookstoreException("Книга не найдена: " + e.getMessage(), e);
+        }
     }
     
-    public List<Book> getAllBooks() {
-        return Bookstore.getBookInventory();
-    }
-    
-    public Book findBookByIsbn(String isbn) {
-        return Bookstore.findBookByIsbn(isbn);
-    }
-    
-    public Order createOrder(int id, List<Book> books) throws BookstoreException {
-        return Bookstore.createOrder(id, books);
+    public Order createOrder(int orderNumber, List<Integer> bookIds) throws BookstoreException {
+        try {
+            return bookstore.createOrder(orderNumber, bookIds);
+        } catch (ValidationException e) {
+            throw new BookstoreException("Ошибка создания заказа: " + e.getMessage(), e);
+        }
     }
     
     public void cancelOrder(int orderId) throws BookstoreException {
-        Bookstore.cancelOrder(orderId);
+        try {
+            bookstore.cancelOrder(orderId);
+        } catch (EntityNotFoundException | ValidationException e) {
+            throw new BookstoreException("Ошибка отмены заказа: " + e.getMessage(), e);
+        }
+    }
+    
+    public void completeOrder(int orderId) throws BookstoreException {
+        try {
+            bookstore.completeOrder(orderId);
+        } catch (EntityNotFoundException | ValidationException e) {
+            throw new BookstoreException("Ошибка завершения заказа: " + e.getMessage(), e);
+        }
     }
     
     public void updateOrderStatus(int orderId, Order.OrderStatus status) throws BookstoreException {
-        Bookstore.updateOrderStatus(orderId, status);
+        try {
+            bookstore.updateOrderStatus(orderId, status);
+        } catch (EntityNotFoundException | ValidationException e) {
+            throw new BookstoreException("Ошибка обновления статуса заказа: " + e.getMessage(), e);
+        }
     }
     
-    public Order findOrderById(int orderId) {
-        return Bookstore.findOrderById(orderId);
+    public List<Book> getAllBooks() {
+        return bookstore.getBookInventory();
     }
     
     public List<Order> getAllOrders() {
-        return Bookstore.getAllOrders();
-    }
-    
-    public void createBookRequest(Order order, Book book) {
-        Bookstore.createBookRequest(order, book);
-    }
-    
-    public List<Request> getActiveRequests() {
-        return Bookstore.getActiveRequests();
-    }
-    
-    public List<Book> getBooksSortedByTitle() {
-        return Bookstore.getBooksSortedByTitle();
-    }
-    
-    public List<Book> getBooksSortedByPublicationDate() {
-        return Bookstore.getBooksSortedByPublicationDate();
-    }
-    
-    public List<Book> getBooksSortedByPrice() {
-        return Bookstore.getBooksSortedByPrice();
-    }
-    
-    public List<Book> getBooksSortedByAvailability() {
-        return Bookstore.getBooksSortedByAvailability();
-    }
-    
-    public List<Order> getOrdersSortedByCompletionDate() {
-        return Bookstore.getOrdersSortedByCompletionDate();
-    }
-    
-    public List<Order> getOrdersSortedByTotalPrice() {
-        return Bookstore.getOrdersSortedByTotalPrice();
-    }
-    
-    public List<Order> getOrdersSortedByStatus() {
-        return Bookstore.getOrdersSortedByStatus();
-    }
-    
-    public List<Request> getRequestsSortedByCount() {
-        return Bookstore.getRequestsSortedByCount();
-    }
-    
-    public List<Request> getRequestsSortedByBookTitle() {
-        return Bookstore.getRequestsSortedByBookTitle();
-    }
-    
-    public List<Order> getCompletedOrdersInPeriod(Date startDate, Date endDate) {
-        return Bookstore.getCompletedOrdersInPeriod(startDate, endDate);
-    }
-    
-    public List<Order> getCompletedOrdersInPeriodSortedByPrice(Date startDate, Date endDate) {
-        return Bookstore.getCompletedOrdersInPeriodSortedByPrice(startDate, endDate);
-    }
-    
-    public long getTotalRevenueInPeriod(Date startDate, Date endDate) {
-        return Bookstore.getTotalRevenueInPeriod(startDate, endDate);
-    }
-    
-    public int getCompletedOrdersCountInPeriod(Date startDate, Date endDate) {
-        return Bookstore.getCompletedOrdersCountInPeriod(startDate, endDate);
-    }
-    
-    public List<Book> getOldBooks() {
-        return Bookstore.getOldBooks();
-    }
-    
-    public List<Book> getStaleBooksSortedByPrice() {
-        return Bookstore.getStaleBooksSortedByPrice();
-    }
-    
-    public String getOrderDetails(int orderId) {
-        return Bookstore.getOrderDetails(orderId);
+        return bookstore.getAllOrders();
     }
     
     public String getBookDetails(String isbn) {
-        return Bookstore.getBookDetails(isbn);
+        return bookstore.getBookDetails(isbn);
     }
     
-    public void importBooksFromCSV(String filePath) throws BookstoreException {
-        Bookstore.importBooksFromCSV(filePath);
+    public String getOrderDetails(int orderId) {
+        return bookstore.getOrderDetails(orderId);
+    }
+    
+    public List<Book> getOldBooks() {
+        return bookstore.getOldBooks();
+    }
+    
+    public long getTotalRevenueInPeriod(Date startDate, Date endDate) {
+        return bookstore.getTotalRevenueInPeriod(startDate, endDate);
+    }
+    
+    public int getCompletedOrdersCountInPeriod(Date startDate, Date endDate) {
+        return bookstore.getCompletedOrdersCountInPeriod(startDate, endDate);
+    }
+    
+    public List<Order> getCompletedOrdersInPeriod(Date startDate, Date endDate) {
+        return bookstore.getCompletedOrdersInPeriod(startDate, endDate);
+    }
+    
+    public void saveAllData() throws BookstoreException {
+        bookstore.saveAllData();
     }
     
     public void exportBooksToCSV(String filePath) throws BookstoreException {
-        Bookstore.exportBooksToCSV(filePath);
+        bookstore.exportBooksToCSV(filePath);
+    }
+    
+    public void importBooksFromCSV(String filePath) throws BookstoreException {
+        bookstore.importBooksFromCSV(filePath);
     }
     
     public void exportOrdersToCSV(String filePath) throws BookstoreException {
-        Bookstore.exportOrdersToCSV(filePath);
+        bookstore.exportOrdersToCSV(filePath);
     }
     
-    public void exportRequestsToCSV(String filePath) throws BookstoreException {
-        Bookstore.exportRequestsToCSV(filePath);
+    public void importOrdersFromCSV(String filePath) throws BookstoreException {
+        bookstore.importOrdersFromCSV(filePath);
     }
 }
