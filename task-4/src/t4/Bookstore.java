@@ -1,5 +1,8 @@
 package t4;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -14,17 +17,29 @@ import java.util.stream.Collectors;
 import t4.Book.BookStatus;
 
 
-public class Bookstore {
+public class Bookstore implements Serializable {
+    private static final long serialVersionUID = 1L;
 	private List<Book> bookInventory;
     private List<Request> existingRequests;
     private List<Order> orders;
-    private final CSVService csvService;
+    private transient CSVService csvService;
+    private transient BookstoreConfig config;
     
     public Bookstore() {
         this.bookInventory = new ArrayList<>();
         this.existingRequests = new ArrayList<>();
         this.orders = new ArrayList<>();
+        initTransientFields();
+    }
+    
+    private void initTransientFields() {
         this.csvService = new CSVService();
+        this.config = BookstoreConfig.getInstance();
+    }
+    
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        initTransientFields();
     }
 
     public void addBookToInventory(Book book) throws ValidationException {
@@ -155,9 +170,11 @@ public class Bookstore {
     }
     
     public void fulfillBookRequests(Book book) {
-        for (Request request : existingRequests) {
-            if (!request.isDone() && request.matchesBook(book)) {
-                request.setDone(true);
+        if (config.isAutoFulfillRequests()) {
+            for (Request request : existingRequests) {
+                if (!request.isDone() && request.matchesBook(book)) {
+                    request.setDone(true);
+                }
             }
         }
     }
@@ -205,6 +222,7 @@ public class Bookstore {
     public List<Book> getBookInventory() { return new ArrayList<>(bookInventory); }
     public List<Request> getExistingRequests() { return new ArrayList<>(existingRequests); }
     public List<Order> getAllOrders() { return new ArrayList<>(orders); }
+    public BookstoreConfig getConfig() { return config; }
     
     public List<Request> getActiveRequests() {
         return existingRequests.stream()
@@ -305,14 +323,16 @@ public class Bookstore {
     }
     
     public List<Book> getOldBooks() {
-        Date sixMonthsAgo = Date.from(
-            LocalDate.now().minus(6, ChronoUnit.MONTHS)
+        Date staleThresholdDate = Date.from(
+            LocalDate.now().minus(config.getStaleMonthsThreshold(), ChronoUnit.MONTHS)
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
         );
+        
         Set<String> recentlySoldIsbns = orders.stream()
             .filter(order -> order.getStatus() == Order.OrderStatus.COMPLETED)
-            .filter(order -> order.getCompletionDate() != null && order.getCompletionDate().after(sixMonthsAgo))
+            .filter(order -> order.getCompletionDate() != null && 
+                           order.getCompletionDate().after(staleThresholdDate))
             .flatMap(order -> order.getBooks().stream())
             .map(Book::getIsbn)
             .collect(Collectors.toSet());
