@@ -10,9 +10,9 @@ public class Book {
     private String isbn;
     private String title;
     private String author;
-    private float price;
+    private long price;
     private BookStatus status;
-    public Book(String isbn, String title, String author, float price) {
+    public Book(String isbn, String title, String author, long price) {
         this.isbn = isbn;
         this.title = title;
         this.author = author;
@@ -23,13 +23,13 @@ public class Book {
     public void setIsbn(String isbn) { this.isbn = isbn; }
     public void setTitle(String title) { this.title = title; }
     public void setAuthor(String author) { this.author = author; }
-    public void setPrice(float price) { this.price = price; }
+    public void setPrice(long price) { this.price = price; }
     public void setStatus(BookStatus status) { this.status = status; }
     
     public String getIsbn() { return this.isbn; }
     public String getTitle() { return this.title; }
     public String getAuthor() { return this.author; }
-    public float getPrice() { return this.price; }
+    public long getPrice() { return this.price; }
     public BookStatus getStatus() { return this.status; }
     
     
