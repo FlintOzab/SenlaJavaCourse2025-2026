@@ -1,5 +1,6 @@
 package t4;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -9,7 +10,8 @@ import java.util.stream.Collectors;
 
 import t4.Book.BookStatus;
 
-class Order {
+class Order implements Serializable {
+    private static final long serialVersionUID = 1L;
     enum OrderStatus {
         NEW,
         COMPLETED,

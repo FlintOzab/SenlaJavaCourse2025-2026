@@ -1,28 +1,57 @@
 package t4;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class ShopApp {
-    private final BookstoreController controller;
+	private BookstoreController controller;
     private final ConsoleMenuController menuController;
     private final Display display;
     private final Input input;
     
     public ShopApp() {
-        Bookstore service = new Bookstore();
-        this.controller = new BookstoreController(service);
         this.display = ConsoleDisplay.getInstance();
         this.input = ConsoleInput.getInstance();
         this.menuController = new ConsoleMenuController(display, input);
+        try {
+            Bookstore bookstore = StateManager.loadState();
+            if (bookstore == null) {
+                bookstore = new Bookstore();
+                display.showMessage("Создан новый книжный магазин");
+            }
+
+            this.controller = new BookstoreController(bookstore);
+        } catch (BookstoreException e) {
+            display.showError("Ошибка: " + e.getMessage());
+            this.controller = new BookstoreController(new Bookstore());
+        }
+        
     }
     
+
+    
     public void run() {
-        Menu mainMenu = createMainMenu();
-        menuController.execute(mainMenu);
         try {
+            Menu mainMenu = createMainMenu();
+            menuController.execute(mainMenu);
+        } finally {
+            saveOnExit();
+        }
+    }
+    
+    private void saveOnExit() {
+        try {
+            StateManager.saveState(controller.getBookstore());
             controller.saveAllData();
             display.showMessage("Данные сохранены");
         } catch (Exception e) {
@@ -30,14 +59,20 @@ public class ShopApp {
         }
     }
     
-    private Menu createMainMenu() {
-        return MenuBuilder.builder("Главное меню")
-            .addItem("Управление книгами", () -> menuController.execute(createBookMenu()))
-            .addItem("Управление заказами", () -> menuController.execute(createOrderMenu()))
-            .addItem("Дополнительные функции", () -> menuController.execute(createAnalyticsMenu()))
-            .addItem("Импорт/Экспорт данных", () -> menuController.execute(createImportExportMenu()))
-            .build();
+    public Bookstore getBookstore() {
+        return controller.getBookstore();
     }
+
+    private Menu createMainMenu() {
+	    return MenuBuilder.builder("Главное меню")
+	            .addItem("Управление книгами", () -> menuController.execute(createBookMenu()))
+	            .addItem("Управление заказами", () -> menuController.execute(createOrderMenu()))
+	            .addItem("Дополнительные функции", () -> menuController.execute(createAnalyticsMenu()))
+	            .addItem("Импорт/Экспорт данных", () -> menuController.execute(createImportExportMenu()))
+	            .addItem("Управление конфигурацией", () -> menuController.execute(createConfigMenu()))
+	            .addItem("Управление состоянием", () -> menuController.execute(createStateManagementMenu()))
+	            .build();
+	    }
     
     private Menu createBookMenu() {
         return MenuBuilder.builder("Управление книгами")
@@ -73,6 +108,24 @@ public class ShopApp {
             .addItem("Импорт книг из CSV", this::importBooks)
             .addItem("Экспорт заказов в CSV", this::exportOrders)
             .addItem("Импорт заказов из CSV", this::importOrders)
+            .build();
+    }
+    
+    private Menu createConfigMenu() {
+        return MenuBuilder.builder("Управление конфигурацией")
+            .addItem("Просмотр текущих настроек", this::viewConfig)
+            .addItem("Изменить порог залежавшихся книг", this::updateStaleThreshold)
+            .addItem("Включить/выключить автоматическое выполнение заявок", this::toggleAutoFulfill)
+            .addItem("Изменить директорию экспорта", this::updateExportDirectory)
+            .addItem("Сохранить настройки", this::saveConfig)
+            .build();
+    }
+    
+    private Menu createStateManagementMenu() {
+        return MenuBuilder.builder("Управление состоянием")
+            .addItem("Создать резервную копию", this::createBackup)
+            .addItem("Восстановить из резервной копии", this::restoreBackup)
+            .addItem("Очистить состояние", this::clearState)
             .build();
     }
     
@@ -286,4 +339,61 @@ public class ShopApp {
             display.showError("Ошибка при импорте заказов: " + e.getMessage());
         }
     }
+
+    private void viewConfig() {
+        BookstoreConfig config = controller.getConfig();
+        display.showMessage("Текущие настройки:");
+        display.showMessage("1. Порог залежавшихся книг: " + config.getStaleMonthsThreshold() + " месяцев");
+        display.showMessage("2. Автоматическое выполнение заявок: " + 
+                           (config.isAutoFulfillRequests() ? "Включено" : "Выключено"));
+        display.showMessage("3. Директория экспорта: " + config.getExportDirectory());
+    }
+
+    private void updateStaleThreshold() {
+        int threshold = input.readInt("Введите количество месяцев для порога залежавшихся книг");
+        controller.getConfig().setStaleMonthsThreshold(threshold);
+        display.showMessage("Порог обновлен");
+    }
+
+    private void toggleAutoFulfill() {
+        boolean current = controller.getConfig().isAutoFulfillRequests();
+        controller.getConfig().setAutoFulfillRequests(!current);
+        display.showMessage("Автоматическое выполнение заявок: " + 
+                           (!current ? "Включено" : "Выключено"));
+    }
+
+    private void updateExportDirectory() {
+        String directory = input.readString("Введите новую директорию экспорта");
+        controller.getConfig().setExportDirectory(directory);
+        display.showMessage("Директория экспорта обновлена");
+    }
+
+    private void saveConfig() {
+        controller.getConfig().savePropertiesToFile();
+        display.showMessage("Настройки сохранены в файл");
+    }
+    private void createBackup() {
+        try {
+            StateManager.createBackup();
+            display.showMessage("Резервная копия создана успешно");
+        } catch (BookstoreException e) {
+            display.showError("Ошибка создания резервной копии: " + e.getMessage());
+        }
+    }
+    
+    private void restoreBackup() {
+        try {
+            if (StateManager.restoreFromBackup()) {
+                display.showMessage("Восстановление выполнено успешно. Перезапустите программу.");
+            }
+        } catch (BookstoreException e) {
+            display.showError("Ошибка восстановления: " + e.getMessage());
+        }
+    }
+
+    private void clearState() {
+        StateManager.deleteState();
+        display.showMessage("Сохраненное состояние очищено. Перезапустите программу.");
+    }
+
 }

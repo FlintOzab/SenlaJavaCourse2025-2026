@@ -76,6 +76,13 @@ public class BookstoreController {
     public List<Book> getOldBooks() {
         return bookstore.getOldBooks();
     }
+    public BookstoreConfig getConfig() {
+    	return bookstore.getConfig(); 
+    }
+    
+    public Bookstore getBookstore() {
+        return bookstore;
+    }
     
     public long getTotalRevenueInPeriod(Date startDate, Date endDate) {
         return bookstore.getTotalRevenueInPeriod(startDate, endDate);

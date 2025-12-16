@@ -1,6 +1,9 @@
 package t4;
 
-public class Request {
+import java.io.Serializable;
+
+public class Request implements Serializable {
+    private static final long serialVersionUID = 1L;
 	private static int requestCounter = 0;
     private int id;
     private int requestId;
