@@ -5,21 +5,15 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Scanner;
 
+@Component
 public class ConsoleInput implements Input {
-	private static ConsoleInput instance;
+    
     private final Scanner scanner;
     private final SimpleDateFormat dateFormat;
     
-    private ConsoleInput() {
+    public ConsoleInput() {
         this.scanner = new Scanner(System.in);
         this.dateFormat = new SimpleDateFormat("dd.MM.yyyy");
-    }
-    
-    public static ConsoleInput getInstance() {
-        if (instance == null) {
-            instance = new ConsoleInput();
-        }
-        return instance;
     }
     
     @Override

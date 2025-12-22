@@ -3,12 +3,14 @@ package t4;
 import java.util.ArrayList;
 import java.util.List;
 
+@Component
 public class ConsoleMenuController {
-    private final Display display;
-    private final Input input;
+    private final ConsoleDisplay display;
+    private final ConsoleInput input;
     private final List<Menu> menuStack = new ArrayList<>();
     
-    public ConsoleMenuController(Display display, Input input) {
+    @Inject
+    public ConsoleMenuController(ConsoleDisplay display, ConsoleInput input) {
         this.display = display;
         this.input = input;
     }

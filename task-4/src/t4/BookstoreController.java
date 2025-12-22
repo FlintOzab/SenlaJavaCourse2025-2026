@@ -2,9 +2,11 @@ package t4;
 import java.util.Date;
 import java.util.List;
 
+@Component
 public class BookstoreController {
     private final Bookstore bookstore;
     
+    @Inject
     public BookstoreController(Bookstore bookstore) {
         this.bookstore = bookstore;
     }

@@ -16,31 +16,57 @@ import java.util.stream.Collectors;
 
 import t4.Book.BookStatus;
 
-
+@Component
 public class Bookstore implements Serializable {
     private static final long serialVersionUID = 1L;
-	private List<Book> bookInventory;
+    private List<Book> bookInventory;
     private List<Request> existingRequests;
     private List<Order> orders;
+    
+    @Inject
     private transient CSVService csvService;
+    
+    @Inject
     private transient BookstoreConfig config;
     
+    @Inject
     public Bookstore() {
         this.bookInventory = new ArrayList<>();
         this.existingRequests = new ArrayList<>();
         this.orders = new ArrayList<>();
-        initTransientFields();
-    }
-    
-    private void initTransientFields() {
-        this.csvService = new CSVService();
-        this.config = BookstoreConfig.getInstance();
+        System.out.println("Bookstore constructor called");
     }
     
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
-        initTransientFields();
+        reinjectTransientFields();
     }
+    
+    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+        out.defaultWriteObject();
+    }
+    
+    private void reinjectTransientFields() {
+        try {
+            DependencyInjector.injectFieldDependencies(this);
+            if (csvService == null) {
+                csvService = new CSVService();
+            }
+            if (config == null) {
+                config = new BookstoreConfig();
+                DependencyInjector.applyConfiguration(config);
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка при внедрении зависимостей после десериализации: " + e.getMessage());
+            if (csvService == null) {
+                csvService = new CSVService();
+            }
+            if (config == null) {
+                config = new BookstoreConfig();
+            }
+        }
+    }
+    
 
     public void addBookToInventory(Book book) throws ValidationException {
         validateBook(book);

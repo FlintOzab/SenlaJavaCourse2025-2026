@@ -30,6 +30,13 @@ public class StateManager {
         try (ObjectInputStream ois = new ObjectInputStream(
                 new FileInputStream(STATE_FILE))) {
             Bookstore bookstore = (Bookstore) ois.readObject();
+            
+            if (!DependencyInjector.isInitialized()) {
+                DependencyInjector.initialize("t4");
+            }
+            
+            reinjectDependencies(bookstore);
+            
             System.out.println("Состояние успешно загружено из файла: " + STATE_FILE);
             return bookstore;
         } catch (InvalidClassException e) {
@@ -40,6 +47,17 @@ public class StateManager {
             throw new BookstoreException("Файл состояния поврежден. Создается новый магазин", e);
         } catch (IOException | ClassNotFoundException e) {
             throw new BookstoreException("Ошибка загрузки состояния: " + e.getMessage(), e);
+        }
+    }
+    
+    private static void reinjectDependencies(Bookstore bookstore) {
+        if (bookstore == null) return;
+        
+        try {
+            DependencyInjector.injectFieldDependencies(bookstore);
+            DependencyInjector.applyConfigurationTo(bookstore);
+        } catch (Exception e) {
+            System.err.println("Ошибка при внедрении зависимостей после загрузки состояния: " + e.getMessage());
         }
     }
     

@@ -2,18 +2,10 @@ package t4;
 
 import java.util.List;
 
+@Component
 public class ConsoleDisplay implements Display {
-
-private static ConsoleDisplay instance;
     
-    private ConsoleDisplay() {}
-    
-    public static ConsoleDisplay getInstance() {
-        if (instance == null) {
-            instance = new ConsoleDisplay();
-        }
-        return instance;
-    }
+    public ConsoleDisplay() {}
     
     @Override
     public void showMessage(String message) {
@@ -33,5 +25,4 @@ private static ConsoleDisplay instance;
             items.forEach(System.out::println);
         }
     }
-
 }

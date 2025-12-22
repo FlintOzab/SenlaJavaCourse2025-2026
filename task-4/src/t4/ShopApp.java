@@ -13,32 +13,21 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+@Component
 public class ShopApp {
-	private BookstoreController controller;
+    private BookstoreController controller;
     private final ConsoleMenuController menuController;
-    private final Display display;
-    private final Input input;
+    private final ConsoleDisplay display;
+    private final ConsoleInput input;
     
-    public ShopApp() {
-        this.display = ConsoleDisplay.getInstance();
-        this.input = ConsoleInput.getInstance();
-        this.menuController = new ConsoleMenuController(display, input);
-        try {
-            Bookstore bookstore = StateManager.loadState();
-            if (bookstore == null) {
-                bookstore = new Bookstore();
-                display.showMessage("Создан новый книжный магазин");
-            }
-
-            this.controller = new BookstoreController(bookstore);
-        } catch (BookstoreException e) {
-            display.showError("Ошибка: " + e.getMessage());
-            this.controller = new BookstoreController(new Bookstore());
-        }
-        
+    @Inject
+    public ShopApp(BookstoreController controller, ConsoleMenuController menuController, 
+                   ConsoleDisplay display, ConsoleInput input) {
+        this.controller = controller;
+        this.menuController = menuController;
+        this.display = display;
+        this.input = input;
     }
-    
-
     
     public void run() {
         try {
@@ -51,13 +40,20 @@ public class ShopApp {
     
     private void saveOnExit() {
         try {
-            StateManager.saveState(controller.getBookstore());
-            controller.saveAllData();
-            display.showMessage("Данные сохранены");
+            if (controller != null && controller.getBookstore() != null) {
+                StateManager.saveState(controller.getBookstore());
+                controller.saveAllData();
+                display.showMessage("Данные сохранены");
+            }
         } catch (Exception e) {
-            display.showError("Ошибка при сохранении данных: " + e.getMessage());
+            if (display != null) {
+                display.showError("Ошибка при сохранении данных: " + e.getMessage());
+            } else {
+                System.err.println("Ошибка при сохранении данных: " + e.getMessage());
+            }
         }
     }
+    
     
     public Bookstore getBookstore() {
         return controller.getBookstore();
