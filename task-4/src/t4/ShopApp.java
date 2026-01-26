@@ -13,32 +13,41 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import di.annotation.Component;
+import di.annotation.Inject;
+import t4.config.BookstoreConfig;
+import t4.control.BookstoreController;
+import t4.control.ConsoleMenuController;
+import t4.exception.BookstoreException;
+import t4.model.Book;
+import t4.model.Order;
+import t4.service.Bookstore;
+import t4.service.StateManager;
+import t4.view.ConsoleDisplay;
+import t4.view.ConsoleInput;
+import t4.view.Menu;
+import t4.view.MenuBuilder;
+
+@Component
 public class ShopApp {
-	private BookstoreController controller;
+    private final BookstoreController controller;
     private final ConsoleMenuController menuController;
-    private final Display display;
-    private final Input input;
+    private final ConsoleDisplay display;
+    private final ConsoleInput input;
+    private final StateManager stateManager;
     
-    public ShopApp() {
-        this.display = ConsoleDisplay.getInstance();
-        this.input = ConsoleInput.getInstance();
-        this.menuController = new ConsoleMenuController(display, input);
-        try {
-            Bookstore bookstore = StateManager.loadState();
-            if (bookstore == null) {
-                bookstore = new Bookstore();
-                display.showMessage("Создан новый книжный магазин");
-            }
-
-            this.controller = new BookstoreController(bookstore);
-        } catch (BookstoreException e) {
-            display.showError("Ошибка: " + e.getMessage());
-            this.controller = new BookstoreController(new Bookstore());
-        }
-        
+    @Inject
+    public ShopApp(BookstoreController controller, 
+                   ConsoleMenuController menuController,
+                   ConsoleDisplay display, 
+                   ConsoleInput input,
+                   StateManager stateManager) {
+        this.controller = controller;
+        this.menuController = menuController;
+        this.display = display;
+        this.input = input;
+        this.stateManager = stateManager;
     }
-    
-
     
     public void run() {
         try {
@@ -46,16 +55,6 @@ public class ShopApp {
             menuController.execute(mainMenu);
         } finally {
             saveOnExit();
-        }
-    }
-    
-    private void saveOnExit() {
-        try {
-            StateManager.saveState(controller.getBookstore());
-            controller.saveAllData();
-            display.showMessage("Данные сохранены");
-        } catch (Exception e) {
-            display.showError("Ошибка при сохранении данных: " + e.getMessage());
         }
     }
     
@@ -118,14 +117,6 @@ public class ShopApp {
             .addItem("Включить/выключить автоматическое выполнение заявок", this::toggleAutoFulfill)
             .addItem("Изменить директорию экспорта", this::updateExportDirectory)
             .addItem("Сохранить настройки", this::saveConfig)
-            .build();
-    }
-    
-    private Menu createStateManagementMenu() {
-        return MenuBuilder.builder("Управление состоянием")
-            .addItem("Создать резервную копию", this::createBackup)
-            .addItem("Восстановить из резервной копии", this::restoreBackup)
-            .addItem("Очистить состояние", this::clearState)
             .build();
     }
     
@@ -372,9 +363,32 @@ public class ShopApp {
         controller.getConfig().savePropertiesToFile();
         display.showMessage("Настройки сохранены в файл");
     }
+    private void saveOnExit() {
+        try {
+            stateManager.saveState(); 
+            controller.saveAllData();
+            display.showMessage("Данные сохранены");
+        } catch (Exception e) {
+            if (display != null) {
+                display.showError("Ошибка при сохранении данных: " + e.getMessage());
+            } else {
+                System.err.println("Ошибка при сохранении данных: " + e.getMessage());
+            }
+        }
+    }
+    
+    private Menu createStateManagementMenu() {
+        return MenuBuilder.builder("Управление состоянием")
+            .addItem("Создать резервную копию", this::createBackup)
+            .addItem("Восстановить из резервной копии", this::restoreBackup)
+            .addItem("Очистить состояние", this::clearState)
+            .addItem("Информация о состоянии", this::showStateInfo)
+            .build();
+    }
+    
     private void createBackup() {
         try {
-            StateManager.createBackup();
+            stateManager.createBackup();
             display.showMessage("Резервная копия создана успешно");
         } catch (BookstoreException e) {
             display.showError("Ошибка создания резервной копии: " + e.getMessage());
@@ -383,7 +397,7 @@ public class ShopApp {
     
     private void restoreBackup() {
         try {
-            if (StateManager.restoreFromBackup()) {
+            if (stateManager.restoreFromBackup()) {
                 display.showMessage("Восстановление выполнено успешно. Перезапустите программу.");
             }
         } catch (BookstoreException e) {
@@ -392,8 +406,31 @@ public class ShopApp {
     }
 
     private void clearState() {
-        StateManager.deleteState();
+        stateManager.deleteState(); 
         display.showMessage("Сохраненное состояние очищено. Перезапустите программу.");
     }
-
+    
+    private void showStateInfo() {
+        try {
+            boolean stateExists = stateManager.stateFileExists();
+            boolean backupExists = stateManager.backupFileExists();
+            long stateSize = stateManager.getStateFileSize();
+            long backupSize = stateManager.getBackupFileSize();
+            
+            StringBuilder info = new StringBuilder();
+            info.append("Информация о состоянии:\n");
+            info.append("Файл состояния: ").append(stateExists ? "существует" : "отсутствует").append("\n");
+            if (stateExists) {
+                info.append("Размер файла состояния: ").append(stateSize).append(" байт\n");
+            }
+            info.append("Резервная копия: ").append(backupExists ? "существует" : "отсутствует").append("\n");
+            if (backupExists) {
+                info.append("Размер резервной копии: ").append(backupSize).append(" байт\n");
+            }
+            
+            display.showMessage(info.toString());
+        } catch (Exception e) {
+            display.showError("Ошибка получения информации: " + e.getMessage());
+        }
+    }
 }
