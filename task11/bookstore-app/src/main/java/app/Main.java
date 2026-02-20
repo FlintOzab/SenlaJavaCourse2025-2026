@@ -44,13 +44,13 @@ public final class Main {
     private static final String DB_SSL_PROPERTY = "db.ssl";
     
     /** Default database URL. */
-    private static final String DEFAULT_DB_URL = "jdbc:postgresql://localhost:5432/bookstore";
+    private static final String DEFAULT_DB_URL = "jdbc:postgresql://localhost:5432/bookstore_db";
     
     /** Default database username. */
-    private static final String DEFAULT_DB_USERNAME = "postgres";
+    private static final String DEFAULT_DB_USERNAME = "test";
     
     /** Default database password. */
-    private static final String DEFAULT_DB_PASSWORD = "postgres";
+    private static final String DEFAULT_DB_PASSWORD = "test";
     
     /** Default SSL setting. */
     private static final String DEFAULT_DB_SSL = "false";
