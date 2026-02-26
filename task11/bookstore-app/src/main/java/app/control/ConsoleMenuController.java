@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-import di.annotation.Component;
-import di.annotation.Inject;
 import view.ConsoleDisplay;
 import view.ConsoleInput;
 import view.Menu;
@@ -28,13 +28,13 @@ public class ConsoleMenuController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConsoleMenuController.class);
     
     /** The display for showing messages. */
-    private final ConsoleDisplay display;
+    private ConsoleDisplay display;
     
     /** The input handler for reading user input. */
-    private final ConsoleInput input;
+    private ConsoleInput input;
     
     /** Stack of menus for navigation. */
-    private final List<Menu> menuStack;
+    private List<Menu> menuStack;
     
     /**
      * Constructs a new ConsoleMenuController with the specified dependencies.
@@ -42,8 +42,8 @@ public class ConsoleMenuController {
      * @param display the display component
      * @param input the input component
      */
-    @Inject
-    public ConsoleMenuController(final ConsoleDisplay display, final ConsoleInput input) {
+    @Autowired
+    public ConsoleMenuController(ConsoleDisplay display, ConsoleInput input) {
         this.display = display;
         this.input = input;
         this.menuStack = new ArrayList<>();

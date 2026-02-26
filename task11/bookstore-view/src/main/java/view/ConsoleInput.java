@@ -1,6 +1,6 @@
 package view;
 
-import di.annotation.Component;
+import org.springframework.stereotype.Component;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;

@@ -1,14 +1,14 @@
 package service;
 
-import dao.BookDAO;
-import dao.DAOFactory;
-import dao.OrderDAO;
-import dao.RequestDAO;
+import dao.jpa.JpaBookDAOInterface;
+import dao.jpa.JpaDAOFactory;
+import dao.jpa.JpaOrderDAOInterface;
+import dao.jpa.JpaRequestDAOInterface;
 import config.BookstoreConfig;
 import exception.BookstoreException;
 import exception.EntityNotFoundException;
 import exception.ValidationException;
-import jdbc.TransactionManager;
+import jpa.JpaTransactionManager;
 import model.Book;
 import model.Book.BookStatus;
 import model.Order;
@@ -16,6 +16,7 @@ import model.Order.OrderStatus;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -28,7 +29,7 @@ import java.util.Optional;
 
 /**
  * Core business logic for the bookstore application.
- * Manages books, orders, and related operations.
+ * Manages books, orders, and related operations using JPA.
  * 
  * @author Bookstore Team
  * @version 1.0
@@ -36,20 +37,20 @@ import java.util.Optional;
 @Component
 public class Bookstore {
     
-    /** Transaction manager for database operations. */
-    private TransactionManager transactionManager;
+    /** JPA transaction manager. */
+    private final JpaTransactionManager transactionManager;
     
     /** Book DAO. */
-    private BookDAO bookDAO;
+    private final JpaBookDAOInterface bookDAO;
     
     /** Order DAO. */
-    private OrderDAO orderDAO;
+    private final JpaOrderDAOInterface orderDAO;
     
     /** Request DAO. */
-    private RequestDAO requestDAO;
+    private final JpaRequestDAOInterface requestDAO;
     
     /** Bookstore configuration. */
-    private BookstoreConfig config;
+    private final BookstoreConfig config;
     
     /** Milliseconds in a day for date calculations. */
     private static final long MILLIS_IN_DAY = 1000L * 60 * 60 * 24;
@@ -57,21 +58,17 @@ public class Bookstore {
     /** Days in a month approximation. */
     private static final long DAYS_IN_MONTH = 30L;
    
-    public Bookstore() {
-        // Default constructor for Spring
-    }
-    
     /**
      * Constructs a new Bookstore with the specified dependencies.
      * 
-     * @param transactionManager the transaction manager
-     * @param daoFactory the DAO factory
+     * @param daoFactory the JPA DAO factory
+     * @param transactionManager the JPA transaction manager
      * @param config the bookstore configuration
      */
     @Autowired
-    public Bookstore(TransactionManager transactionManager,
-                      DAOFactory daoFactory,
-                      BookstoreConfig config) {
+    public Bookstore(JpaDAOFactory daoFactory,
+                     JpaTransactionManager transactionManager,
+                     BookstoreConfig config) {
         this.transactionManager = transactionManager;
         this.bookDAO = daoFactory.getBookDAO();
         this.orderDAO = daoFactory.getOrderDAO();
@@ -86,10 +83,11 @@ public class Bookstore {
      * @return the saved book with generated ID
      * @throws BookstoreException if validation fails or book already exists
      */
+    @Transactional
     public Book addBook(final Book book) throws BookstoreException {
         validateBook(book);
         
-        return transactionManager.executeWithResult(() -> {
+        return transactionManager.executeInTransaction(em -> {
             Optional<Book> existingBook = bookDAO.findByIsbn(book.getIsbn());
             if (existingBook.isPresent()) {
                 throw new ValidationException(
@@ -107,8 +105,9 @@ public class Bookstore {
      * @param isbn the ISBN of the book to write off
      * @throws BookstoreException if book not found
      */
+    @Transactional
     public void writeOffBook(final String isbn) throws BookstoreException {
-        transactionManager.executeWithoutResult(() -> {
+        transactionManager.executeWithoutResult(em -> {
             Book book = bookDAO.findByIsbn(isbn)
                 .orElseThrow(() -> new EntityNotFoundException(
                     "Книга с ISBN " + isbn + " не найдена"));
@@ -125,12 +124,13 @@ public class Bookstore {
      * @return the created order
      * @throws BookstoreException if validation fails
      */
+    @Transactional
     public Order createOrder(final List<Integer> bookIds) throws BookstoreException {
         if (bookIds == null || bookIds.isEmpty()) {
             throw new ValidationException("Заказ должен содержать хотя бы одну книгу");
         }
         
-        return transactionManager.executeWithResult(() -> {
+        return transactionManager.executeInTransaction(em -> {
             List<Book> books = bookIds.stream()
                 .map(id -> {
                     try {
@@ -156,8 +156,9 @@ public class Bookstore {
      * @param orderId the ID of the order to complete
      * @throws BookstoreException if order not found or cannot be completed
      */
+    @Transactional
     public void completeOrder(final Integer orderId) throws BookstoreException {
-        transactionManager.executeWithoutResult(() -> {
+        transactionManager.executeWithoutResult(em -> {
             Order order = orderDAO.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException(
                     "Заказ с ID " + orderId + " не найден"));
@@ -173,6 +174,9 @@ public class Bookstore {
             
             order.completeOrder();
             orderDAO.update(order);
+            
+            // Mark associated requests as done
+            requestDAO.markRequestsAsDoneForOrder(orderId);
         });
     }
     
@@ -182,8 +186,9 @@ public class Bookstore {
      * @param orderId the ID of the order to cancel
      * @throws BookstoreException if order not found or cannot be cancelled
      */
+    @Transactional
     public void cancelOrder(final Integer orderId) throws BookstoreException {
-        transactionManager.executeWithoutResult(() -> {
+        transactionManager.executeWithoutResult(em -> {
             Order order = orderDAO.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException(
                     "Заказ с ID " + orderId + " не найден"));
@@ -204,9 +209,10 @@ public class Bookstore {
      * @param status the new status
      * @throws BookstoreException if order not found
      */
+    @Transactional
     public void updateOrderStatus(final Integer orderId, 
                                    final OrderStatus status) throws BookstoreException {
-        transactionManager.executeWithoutResult(() -> {
+        transactionManager.executeWithoutResult(em -> {
             Order order = orderDAO.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException(
                     "Заказ с ID " + orderId + " не найден"));
@@ -214,6 +220,8 @@ public class Bookstore {
             order.setStatus(status);
             if (status == OrderStatus.COMPLETED) {
                 order.setCompletionDate(new Date());
+                // Mark associated requests as done
+                requestDAO.markRequestsAsDoneForOrder(orderId);
             }
             orderDAO.update(order);
         });
@@ -224,6 +232,7 @@ public class Bookstore {
      * 
      * @return list of all books
      */
+    @Transactional(readOnly = true)
     public List<Book> getAllBooks() {
         return bookDAO.findAll();
     }
@@ -233,6 +242,7 @@ public class Bookstore {
      * 
      * @return list of all orders
      */
+    @Transactional(readOnly = true)
     public List<Order> getAllOrders() {
         return orderDAO.findAll();
     }
@@ -243,6 +253,7 @@ public class Bookstore {
      * @param isbn the ISBN
      * @return optional containing the book if found
      */
+    @Transactional(readOnly = true)
     public Optional<Book> findBookByIsbn(final String isbn) {
         return bookDAO.findByIsbn(isbn);
     }
@@ -253,6 +264,7 @@ public class Bookstore {
      * @param id the order ID
      * @return optional containing the order if found
      */
+    @Transactional(readOnly = true)
     public Optional<Order> findOrderById(final Integer id) {
         return orderDAO.findById(id);
     }
@@ -263,6 +275,7 @@ public class Bookstore {
      * @param isbn the ISBN
      * @return formatted book details
      */
+    @Transactional(readOnly = true)
     public String getBookDetails(final String isbn) {
         Optional<Book> bookOpt = bookDAO.findByIsbn(isbn);
         if (bookOpt.isPresent()) {
@@ -289,6 +302,7 @@ public class Bookstore {
      * @param orderId the order ID
      * @return formatted order details
      */
+    @Transactional(readOnly = true)
     public String getOrderDetails(final Integer orderId) {
         Optional<Order> orderOpt = orderDAO.findById(orderId);
         if (orderOpt.isPresent()) {
@@ -318,6 +332,7 @@ public class Bookstore {
      * 
      * @return list of old books
      */
+    @Transactional(readOnly = true)
     public List<Book> getOldBooks() {
         return bookDAO.findAll().stream()
             .filter(book -> {
@@ -338,14 +353,9 @@ public class Bookstore {
      * @param endDate the end date
      * @return the total revenue
      */
+    @Transactional(readOnly = true)
     public long getTotalRevenueInPeriod(final Date startDate, final Date endDate) {
-        return orderDAO.findAll().stream()
-            .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
-            .filter(order -> order.getCompletionDate() != null)
-            .filter(order -> !order.getCompletionDate().before(startDate) 
-                && !order.getCompletionDate().after(endDate))
-            .mapToLong(Order::getTotalPrice)
-            .sum();
+        return orderDAO.getTotalRevenueInPeriod(startDate, endDate);
     }
     
     /**
@@ -355,13 +365,9 @@ public class Bookstore {
      * @param endDate the end date
      * @return the count
      */
+    @Transactional(readOnly = true)
     public int getCompletedOrdersCountInPeriod(final Date startDate, final Date endDate) {
-        return (int) orderDAO.findAll().stream()
-            .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
-            .filter(order -> order.getCompletionDate() != null)
-            .filter(order -> !order.getCompletionDate().before(startDate) 
-                && !order.getCompletionDate().after(endDate))
-            .count();
+        return (int) orderDAO.countCompletedInPeriod(startDate, endDate);
     }
     
     /**
@@ -371,13 +377,9 @@ public class Bookstore {
      * @param endDate the end date
      * @return list of completed orders
      */
+    @Transactional(readOnly = true)
     public List<Order> getCompletedOrdersInPeriod(final Date startDate, final Date endDate) {
-        return orderDAO.findAll().stream()
-            .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
-            .filter(order -> order.getCompletionDate() != null)
-            .filter(order -> !order.getCompletionDate().before(startDate) 
-                && !order.getCompletionDate().after(endDate))
-            .toList();
+        return orderDAO.findCompletedInPeriod(startDate, endDate);
     }
     
     /**
@@ -385,8 +387,9 @@ public class Bookstore {
      * 
      * @throws BookstoreException if save fails
      */
+    @Transactional(readOnly = true)
     public void saveAllData() throws BookstoreException {
-        // Implementation for saving all data
+        // Implementation for saving all data if needed
     }
     
     /**
@@ -395,6 +398,7 @@ public class Bookstore {
      * @param filePath the file path
      * @throws BookstoreException if export fails
      */
+    @Transactional(readOnly = true)
     public void exportBooksToCSV(final String filePath) throws BookstoreException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
             List<Book> books = bookDAO.findAll();
@@ -412,6 +416,7 @@ public class Bookstore {
      * @param filePath the file path
      * @throws BookstoreException if import fails
      */
+    @Transactional
     public void importBooksFromCSV(final String filePath) throws BookstoreException {
         try {
             List<String> lines = Files.readAllLines(Paths.get(filePath));
@@ -432,6 +437,7 @@ public class Bookstore {
      * @param filePath the file path
      * @throws BookstoreException if export fails
      */
+    @Transactional(readOnly = true)
     public void exportOrdersToCSV(final String filePath) throws BookstoreException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
             List<Order> orders = orderDAO.findAll();
@@ -449,6 +455,7 @@ public class Bookstore {
      * @param filePath the file path
      * @throws BookstoreException if import fails
      */
+    @Transactional
     public void importOrdersFromCSV(final String filePath) throws BookstoreException {
         try {
             List<String> lines = Files.readAllLines(Paths.get(filePath));

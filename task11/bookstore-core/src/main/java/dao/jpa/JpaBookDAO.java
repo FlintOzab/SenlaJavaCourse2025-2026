@@ -1,7 +1,5 @@
 package dao.jpa;
 
-import generics.GenericDAO;
-import jpa.JpaConstants;
 import model.Book;
 import model.Book.BookStatus;
 import org.slf4j.Logger;
@@ -9,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -26,7 +23,7 @@ import java.util.Optional;
  * @version 1.0
  */
 @Repository
-public class JpaBookDAO implements GenericDAO<Book, Integer> {
+public class JpaBookDAO implements JpaBookDAOInterface {
     
     /** Logger instance. */
     private static final Logger LOGGER = LoggerFactory.getLogger(JpaBookDAO.class);
@@ -34,13 +31,6 @@ public class JpaBookDAO implements GenericDAO<Book, Integer> {
     /** Entity manager for JPA operations. */
     @PersistenceContext
     private EntityManager entityManager;
-    
-    /**
-     * Default constructor.
-     */
-    public JpaBookDAO() {
-        // Default constructor for Spring
-    }
     
     @Override
     public Optional<Book> findById(final Integer id) {
@@ -69,9 +59,7 @@ public class JpaBookDAO implements GenericDAO<Book, Integer> {
             LOGGER.info("Book saved with ID: {}", book.getId());
             return book;
         } else {
-            Book merged = entityManager.merge(book);
-            LOGGER.info("Book updated with ID: {}", merged.getId());
-            return merged;
+            return entityManager.merge(book);
         }
     }
     
@@ -81,7 +69,7 @@ public class JpaBookDAO implements GenericDAO<Book, Integer> {
             throw new IllegalArgumentException("Cannot update book without ID");
         }
         LOGGER.debug("Updating book with ID: {}", book.getId());
-        return save(book);
+        return entityManager.merge(book);
     }
     
     @Override
@@ -94,31 +82,21 @@ public class JpaBookDAO implements GenericDAO<Book, Integer> {
         }
     }
     
-    /**
-     * Finds a book by its ISBN using named query.
-     * 
-     * @param isbn the ISBN to search for
-     * @return optional containing the book if found
-     */
+    @Override
     public Optional<Book> findByIsbn(final String isbn) {
         LOGGER.debug("Finding book by ISBN: {}", isbn);
         try {
-            TypedQuery<Book> query = entityManager.createNamedQuery(
-                JpaConstants.QUERY_BOOK_FIND_BY_ISBN, Book.class);
-            query.setParameter(JpaConstants.PARAM_ISBN, isbn);
+            TypedQuery<Book> query = entityManager.createQuery(
+                "SELECT b FROM Book b WHERE b.isbn = :isbn", Book.class);
+            query.setParameter("isbn", isbn);
             return Optional.of(query.getSingleResult());
-        } catch (NoResultException e) {
+        } catch (Exception e) {
             LOGGER.debug("No book found with ISBN: {}", isbn);
             return Optional.empty();
         }
     }
     
-    /**
-     * Finds books by their status using Criteria API.
-     * 
-     * @param status the status to search for
-     * @return list of books with the given status
-     */
+    @Override
     public List<Book> findByStatus(final BookStatus status) {
         LOGGER.debug("Finding books by status: {}", status);
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -132,27 +110,16 @@ public class JpaBookDAO implements GenericDAO<Book, Integer> {
         return entityManager.createQuery(cq).getResultList();
     }
     
-    /**
-     * Finds books by order ID using JPQL.
-     * 
-     * @param orderId the order ID
-     * @return list of books in the order
-     */
+    @Override
     public List<Book> findByOrderId(final Integer orderId) {
         LOGGER.debug("Finding books by order ID: {}", orderId);
-        TypedQuery<Book> query = entityManager.createNamedQuery(
-            JpaConstants.QUERY_BOOK_FIND_BY_ORDER_ID, Book.class);
-        query.setParameter(JpaConstants.PARAM_ORDER_ID, orderId);
+        TypedQuery<Book> query = entityManager.createQuery(
+            "SELECT b FROM Order o JOIN o.books b WHERE o.id = :orderId", Book.class);
+        query.setParameter("orderId", orderId);
         return query.getResultList();
     }
     
-    /**
-     * Finds books with pagination using Criteria API.
-     * 
-     * @param page the page number (0-based)
-     * @param size the page size
-     * @return list of books for the page
-     */
+    @Override
     public List<Book> findWithPagination(final int page, final int size) {
         LOGGER.debug("Finding books with pagination - page: {}, size: {}", page, size);
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -167,11 +134,7 @@ public class JpaBookDAO implements GenericDAO<Book, Integer> {
         return query.getResultList();
     }
     
-    /**
-     * Counts total number of books.
-     * 
-     * @return total book count
-     */
+    @Override
     public long count() {
         LOGGER.debug("Counting all books");
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -180,22 +143,12 @@ public class JpaBookDAO implements GenericDAO<Book, Integer> {
         return entityManager.createQuery(cq).getSingleResult();
     }
     
-    /**
-     * Checks if a book exists by ISBN.
-     * 
-     * @param isbn the ISBN to check
-     * @return true if exists
-     */
+    @Override
     public boolean existsByIsbn(final String isbn) {
         LOGGER.debug("Checking if book exists by ISBN: {}", isbn);
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Long> cq = cb.createQuery(Long.class);
-        Root<Book> root = cq.from(Book.class);
-        
-        cq.select(cb.count(root))
-          .where(cb.equal(root.get("isbn"), isbn));
-        
-        Long count = entityManager.createQuery(cq).getSingleResult();
-        return count > 0;
+        TypedQuery<Long> query = entityManager.createQuery(
+            "SELECT COUNT(b) FROM Book b WHERE b.isbn = :isbn", Long.class);
+        query.setParameter("isbn", isbn);
+        return query.getSingleResult() > 0;
     }
 }

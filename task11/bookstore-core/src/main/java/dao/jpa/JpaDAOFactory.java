@@ -19,13 +19,13 @@ public class JpaDAOFactory {
     private static final Logger LOGGER = LoggerFactory.getLogger(JpaDAOFactory.class);
     
     /** Book DAO instance. */
-    private final JpaBookDAO bookDAO;
+    private final JpaBookDAOInterface bookDAO;
     
     /** Order DAO instance. */
-    private final JpaOrderDAO orderDAO;
+    private final JpaOrderDAOInterface orderDAO;
     
     /** Request DAO instance. */
-    private final JpaRequestDAO requestDAO;
+    private final JpaRequestDAOInterface requestDAO;
     
     /**
      * Constructs a new JpaDAOFactory with the specified DAOs.
@@ -35,9 +35,9 @@ public class JpaDAOFactory {
      * @param requestDAO the request DAO
      */
     @Autowired
-    public JpaDAOFactory(final JpaBookDAO bookDAO,
-                         final JpaOrderDAO orderDAO,
-                         final JpaRequestDAO requestDAO) {
+    public JpaDAOFactory(final JpaBookDAOInterface bookDAO,
+                         final JpaOrderDAOInterface orderDAO,
+                         final JpaRequestDAOInterface requestDAO) {
         this.bookDAO = bookDAO;
         this.orderDAO = orderDAO;
         this.requestDAO = requestDAO;
@@ -49,7 +49,7 @@ public class JpaDAOFactory {
      * 
      * @return the JpaBookDAO instance
      */
-    public JpaBookDAO getBookDAO() {
+    public JpaBookDAOInterface getBookDAO() {
         return bookDAO;
     }
     
@@ -58,7 +58,7 @@ public class JpaDAOFactory {
      * 
      * @return the JpaOrderDAO instance
      */
-    public JpaOrderDAO getOrderDAO() {
+    public JpaOrderDAOInterface getOrderDAO() {
         return orderDAO;
     }
     
@@ -67,7 +67,7 @@ public class JpaDAOFactory {
      * 
      * @return the JpaRequestDAO instance
      */
-    public JpaRequestDAO getRequestDAO() {
+    public JpaRequestDAOInterface getRequestDAO() {
         return requestDAO;
     }
 }

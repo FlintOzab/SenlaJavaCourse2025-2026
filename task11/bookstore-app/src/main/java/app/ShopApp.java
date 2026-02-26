@@ -63,7 +63,7 @@ public class ShopApp {
      * @param input the input component
      * @param stateManager the state manager
      */
-    @Autowired  // Changed from @Inject to @Autowired
+    @Autowired  
     public ShopApp(final BookstoreController controller, 
                    final ConsoleMenuController menuController,
                    final ConsoleDisplay display, 

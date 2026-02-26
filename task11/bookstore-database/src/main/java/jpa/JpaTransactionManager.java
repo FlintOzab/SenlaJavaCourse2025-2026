@@ -3,11 +3,11 @@ package jpa;
 import jdbc.TransactionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.PersistenceContext;
 
 /**
  * Manages JPA transactions.
@@ -22,40 +22,9 @@ public class JpaTransactionManager {
     /** Logger instance. */
     private static final Logger LOGGER = LoggerFactory.getLogger(JpaTransactionManager.class);
     
-    /** Thread-local EntityManager for transaction context. */
-    private final ThreadLocal<EntityManager> entityManagerHolder = new ThreadLocal<>();
-    
-    /** Thread-local transaction flag. */
-    private final ThreadLocal<Boolean> transactionActive = new ThreadLocal<>();
-    
-    /** EntityManager factory. */
-    private final JpaEntityManagerFactory entityManagerFactory;
-    
-    /**
-     * Constructs a new JpaTransactionManager with the specified factory.
-     * 
-     * @param entityManagerFactory the entity manager factory
-     */
-    @Autowired
-    public JpaTransactionManager(final JpaEntityManagerFactory entityManagerFactory) {
-        this.entityManagerFactory = entityManagerFactory;
-    }
-    
-    /**
-     * Gets the current EntityManager for the thread.
-     * Creates a new one if none exists.
-     * 
-     * @return the EntityManager
-     */
-    public EntityManager getCurrentEntityManager() {
-        EntityManager em = entityManagerHolder.get();
-        if (em == null || !em.isOpen()) {
-            em = entityManagerFactory.createEntityManager();
-            entityManagerHolder.set(em);
-            LOGGER.debug("Created new EntityManager for thread: {}", Thread.currentThread().getName());
-        }
-        return em;
-    }
+    /** Entity manager for JPA operations. */
+    @PersistenceContext
+    private EntityManager entityManager;
     
     /**
      * Executes an operation within a transaction and returns a result.
@@ -65,43 +34,16 @@ public class JpaTransactionManager {
      * @return the result of the operation
      * @throws TransactionException if transaction fails
      */
+    @Transactional
     public <T> T executeInTransaction(final TransactionOperation<T> operation) {
-        EntityManager em = getCurrentEntityManager();
-        EntityTransaction transaction = em.getTransaction();
-        boolean isNewTransaction = !transaction.isActive();
-        
         try {
-            if (isNewTransaction) {
-                transaction.begin();
-                transactionActive.set(true);
-                LOGGER.debug("Started new transaction");
-            }
-            
-            T result = operation.execute(em);
-            
-            if (isNewTransaction) {
-                transaction.commit();
-                transactionActive.remove();
-                LOGGER.debug("Transaction committed successfully");
-            }
-            
+            LOGGER.debug("Executing operation in transaction");
+            T result = operation.execute(entityManager);
+            LOGGER.debug("Transaction completed successfully");
             return result;
-            
         } catch (Exception e) {
-            if (isNewTransaction && transaction.isActive()) {
-                try {
-                    transaction.rollback();
-                    LOGGER.error("Transaction rolled back due to error", e);
-                } catch (Exception rollbackEx) {
-                    LOGGER.error("Error during transaction rollback", rollbackEx);
-                    throw new TransactionException("Failed to rollback transaction", rollbackEx);
-                }
-            }
+            LOGGER.error("Transaction failed", e);
             throw new TransactionException("Transaction execution failed: " + e.getMessage(), e);
-        } finally {
-            if (isNewTransaction) {
-                closeEntityManager();
-            }
         }
     }
     
@@ -111,6 +53,7 @@ public class JpaTransactionManager {
      * @param consumer the operation to execute
      * @throws TransactionException if transaction fails
      */
+    @Transactional
     public void executeWithoutResult(final TransactionConsumer consumer) {
         executeInTransaction(em -> {
             consumer.accept(em);
@@ -126,50 +69,9 @@ public class JpaTransactionManager {
      * @return the query result
      * @throws TransactionException if transaction fails
      */
+    @Transactional(readOnly = true)
     public <T> T executeQuery(final TransactionQuery<T> operation) {
         return executeInTransaction(operation::execute);
-    }
-    
-    /**
-     * Closes the EntityManager for the current thread.
-     */
-    public void closeEntityManager() {
-        EntityManager em = entityManagerHolder.get();
-        if (em != null && em.isOpen()) {
-            em.close();
-            entityManagerHolder.remove();
-            LOGGER.debug("Closed EntityManager for thread: {}", Thread.currentThread().getName());
-        }
-    }
-    
-    /**
-     * Clears the persistence context.
-     */
-    public void clear() {
-        EntityManager em = entityManagerHolder.get();
-        if (em != null && em.isOpen()) {
-            em.clear();
-        }
-    }
-    
-    /**
-     * Flushes the persistence context.
-     */
-    public void flush() {
-        EntityManager em = entityManagerHolder.get();
-        if (em != null && em.isOpen()) {
-            em.flush();
-        }
-    }
-    
-    /**
-     * Checks if a transaction is active for the current thread.
-     * 
-     * @return true if transaction is active
-     */
-    public boolean isTransactionActive() {
-        Boolean active = transactionActive.get();
-        return active != null && active;
     }
     
     /**

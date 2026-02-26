@@ -1,11 +1,11 @@
 package service;
 
+import dao.jpa.JpaBookDAOInterface;
+import dao.jpa.JpaDAOFactory;
+import dao.jpa.JpaOrderDAOInterface;
+import dao.jpa.JpaRequestDAOInterface;
 import exception.BookstoreException;
 import exception.ValidationException;
-import dao.jpa.JpaBookDAO;
-import dao.jpa.JpaDAOFactory;
-import dao.jpa.JpaOrderDAO;
-import dao.jpa.JpaRequestDAO;
 import jpa.JpaTransactionManager;
 import model.Book;
 import model.Book.BookStatus;
@@ -35,13 +35,13 @@ public class JpaBookstoreService {
     private final JpaTransactionManager transactionManager;
     
     /** Book DAO. */
-    private final JpaBookDAO bookDAO;
+    private final JpaBookDAOInterface bookDAO;
     
     /** Order DAO. */
-    private final JpaOrderDAO orderDAO;
+    private final JpaOrderDAOInterface orderDAO;
     
     /** Request DAO. */
-    private final JpaRequestDAO requestDAO;
+    private final JpaRequestDAOInterface requestDAO;
     
     /**
      * Constructs a new JpaBookstoreService with the specified dependencies.

@@ -5,16 +5,7 @@ import exception.BookstoreException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InvalidClassException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.StreamCorruptedException;
+import java.io.*;
 
 /**
  * Manages application state persistence.
@@ -43,7 +34,7 @@ public class StateManager {
      *
      * @param bookstore the bookstore instance
      */
-    @Autowired  // Changed from @Inject to @Autowired
+    @Autowired
     public StateManager(final Bookstore bookstore) {
         this.bookstore = bookstore;
     }
@@ -77,8 +68,7 @@ public class StateManager {
 
         try (ObjectInputStream ois = new ObjectInputStream(
                 new FileInputStream(STATE_FILE))) {
-            Bookstore bookstore = (Bookstore) ois.readObject();
-            return bookstore;
+            return (Bookstore) ois.readObject();
         } catch (InvalidClassException | StreamCorruptedException e) {
             stateFile.delete();
             return null;
