@@ -4,7 +4,6 @@ import model.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -106,7 +105,6 @@ public class JpaRequestDAO implements JpaRequestDAOInterface {
     }
     
     @Override
-    @Transactional
     public int markRequestsAsDoneForOrder(final Integer orderId) {
         LOGGER.debug("Marking requests as done for order: {}", orderId);
         return entityManager.createQuery(

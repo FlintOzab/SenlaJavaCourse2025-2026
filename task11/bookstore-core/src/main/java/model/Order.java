@@ -78,9 +78,6 @@ public class Order implements Serializable {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
     
-    @Column(name = "total_price")
-    private Long totalPrice;
-    
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", updatable = false)
     private Date createdAt;
@@ -289,15 +286,6 @@ public class Order implements Serializable {
     }
     
     /**
-     * Gets the total price.
-     * 
-     * @return the total price
-     */
-    public Long getTotalPrice() {
-        return totalPrice;
-    }
-    
-    /**
      * Gets the creation timestamp.
      * 
      * @return the creation timestamp
@@ -358,12 +346,12 @@ public class Order implements Serializable {
     /**
      * Calculates total price of the order.
      */
-    private void calculateTotalPrice() {
-        if (orderItems != null) {
-            totalPrice = orderItems.stream()
+    public Long calculateTotalPrice() {
+        
+        return orderItems.stream()
                 .mapToLong(item -> item.getBook() != null ? item.getBook().getPrice() : 0L)
                 .sum();
-        }
+        
     }
     
     /**
@@ -420,7 +408,7 @@ public class Order implements Serializable {
     public String toString() {
         return String.format(
             "Заказ #%d - Статус: %s - Сумма: %d руб. - Книг: %d", 
-            id, status, getTotalPrice(), getBooks().size());
+            id, status, calculateTotalPrice(), getBooks().size());
     }
     
     /**

@@ -8,7 +8,6 @@ import config.BookstoreConfig;
 import exception.BookstoreException;
 import exception.EntityNotFoundException;
 import exception.ValidationException;
-import jpa.JpaTransactionManager;
 import model.Book;
 import model.Book.BookStatus;
 import model.Order;
@@ -37,9 +36,6 @@ import java.util.Optional;
 @Component
 public class Bookstore {
     
-    /** JPA transaction manager. */
-    private final JpaTransactionManager transactionManager;
-    
     /** Book DAO. */
     private final JpaBookDAOInterface bookDAO;
     
@@ -62,14 +58,11 @@ public class Bookstore {
      * Constructs a new Bookstore with the specified dependencies.
      * 
      * @param daoFactory the JPA DAO factory
-     * @param transactionManager the JPA transaction manager
      * @param config the bookstore configuration
      */
     @Autowired
     public Bookstore(JpaDAOFactory daoFactory,
-                     JpaTransactionManager transactionManager,
                      BookstoreConfig config) {
-        this.transactionManager = transactionManager;
         this.bookDAO = daoFactory.getBookDAO();
         this.orderDAO = daoFactory.getOrderDAO();
         this.requestDAO = daoFactory.getRequestDAO();
@@ -87,16 +80,13 @@ public class Bookstore {
     public Book addBook(final Book book) throws BookstoreException {
         validateBook(book);
         
-        return transactionManager.executeInTransaction(em -> {
-            Optional<Book> existingBook = bookDAO.findByIsbn(book.getIsbn());
-            if (existingBook.isPresent()) {
-                throw new ValidationException(
-                    "Книга с ISBN " + book.getIsbn() + " уже существует");
-            }
-            
-            Book savedBook = bookDAO.save(book);
-            return savedBook;
-        });
+        Optional<Book> existingBook = bookDAO.findByIsbn(book.getIsbn());
+        if (existingBook.isPresent()) {
+            throw new ValidationException(
+                "Книга с ISBN " + book.getIsbn() + " уже существует");
+        }
+        
+        return bookDAO.save(book);
     }
     
     /**
@@ -107,14 +97,12 @@ public class Bookstore {
      */
     @Transactional
     public void writeOffBook(final String isbn) throws BookstoreException {
-        transactionManager.executeWithoutResult(em -> {
-            Book book = bookDAO.findByIsbn(isbn)
-                .orElseThrow(() -> new EntityNotFoundException(
-                    "Книга с ISBN " + isbn + " не найдена"));
-            
-            book.setStatus(BookStatus.OUT_OF_STOCK);
-            bookDAO.update(book);
-        });
+        Book book = bookDAO.findByIsbn(isbn)
+            .orElseThrow(() -> new EntityNotFoundException(
+                "Книга с ISBN " + isbn + " не найдена"));
+        
+        book.setStatus(BookStatus.OUT_OF_STOCK);
+        bookDAO.update(book);
     }
     
     /**
@@ -130,24 +118,22 @@ public class Bookstore {
             throw new ValidationException("Заказ должен содержать хотя бы одну книгу");
         }
         
-        return transactionManager.executeInTransaction(em -> {
-            List<Book> books = bookIds.stream()
-                .map(id -> {
-                    try {
-                        return bookDAO.findById(id)
-                            .orElseThrow(() -> new EntityNotFoundException(
-                                "Книга с ID " + id + " не найдена"));
-                    } catch (EntityNotFoundException e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .toList();
-            
-            Order order = new Order(books);
-            Order savedOrder = orderDAO.save(order);
-            
-            return savedOrder;
-        });
+        List<Book> books = bookIds.stream()
+            .map(id -> {
+				try {
+					return bookDAO.findById(id)
+					    .orElseThrow(() -> new EntityNotFoundException(
+					        "Книга с ID " + id + " не найдена"));
+				} catch (EntityNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				return null;
+			})
+            .toList();
+        
+        Order order = new Order(books);
+        return orderDAO.save(order);
     }
     
     /**
@@ -158,26 +144,24 @@ public class Bookstore {
      */
     @Transactional
     public void completeOrder(final Integer orderId) throws BookstoreException {
-        transactionManager.executeWithoutResult(em -> {
-            Order order = orderDAO.findById(orderId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                    "Заказ с ID " + orderId + " не найден"));
-            
-            if (order.getStatus() != OrderStatus.NEW) {
-                throw new ValidationException("Можно завершать только новые заказы");
-            }
-            
-            if (order.containsOutOfStockBooks()) {
-                throw new ValidationException(
-                    "Невозможно завершить заказ с отсутствующими книгами");
-            }
-            
-            order.completeOrder();
-            orderDAO.update(order);
-            
-            // Mark associated requests as done
-            requestDAO.markRequestsAsDoneForOrder(orderId);
-        });
+        Order order = orderDAO.findById(orderId)
+            .orElseThrow(() -> new EntityNotFoundException(
+                "Заказ с ID " + orderId + " не найден"));
+        
+        if (order.getStatus() != OrderStatus.NEW) {
+            throw new ValidationException("Можно завершать только новые заказы");
+        }
+        
+        if (order.containsOutOfStockBooks()) {
+            throw new ValidationException(
+                "Невозможно завершить заказ с отсутствующими книгами");
+        }
+        
+        order.completeOrder();
+        orderDAO.update(order);
+        
+        // Mark associated requests as done
+        requestDAO.markRequestsAsDoneForOrder(orderId);
     }
     
     /**
@@ -188,18 +172,16 @@ public class Bookstore {
      */
     @Transactional
     public void cancelOrder(final Integer orderId) throws BookstoreException {
-        transactionManager.executeWithoutResult(em -> {
-            Order order = orderDAO.findById(orderId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                    "Заказ с ID " + orderId + " не найден"));
-            
-            if (order.getStatus() != OrderStatus.NEW) {
-                throw new ValidationException("Можно отменять только новые заказы");
-            }
-            
-            order.setStatus(OrderStatus.CANCELLED);
-            orderDAO.update(order);
-        });
+        Order order = orderDAO.findById(orderId)
+            .orElseThrow(() -> new EntityNotFoundException(
+                "Заказ с ID " + orderId + " не найден"));
+        
+        if (order.getStatus() != OrderStatus.NEW) {
+            throw new ValidationException("Можно отменять только новые заказы");
+        }
+        
+        order.setStatus(OrderStatus.CANCELLED);
+        orderDAO.update(order);
     }
     
     /**
@@ -212,19 +194,17 @@ public class Bookstore {
     @Transactional
     public void updateOrderStatus(final Integer orderId, 
                                    final OrderStatus status) throws BookstoreException {
-        transactionManager.executeWithoutResult(em -> {
-            Order order = orderDAO.findById(orderId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                    "Заказ с ID " + orderId + " не найден"));
-            
-            order.setStatus(status);
-            if (status == OrderStatus.COMPLETED) {
-                order.setCompletionDate(new Date());
-                // Mark associated requests as done
-                requestDAO.markRequestsAsDoneForOrder(orderId);
-            }
-            orderDAO.update(order);
-        });
+        Order order = orderDAO.findById(orderId)
+            .orElseThrow(() -> new EntityNotFoundException(
+                "Заказ с ID " + orderId + " не найден"));
+        
+        order.setStatus(status);
+        if (status == OrderStatus.COMPLETED) {
+            order.setCompletionDate(new Date());
+            // Mark associated requests as done
+            requestDAO.markRequestsAsDoneForOrder(orderId);
+        }
+        orderDAO.update(order);
     }
     
     /**
@@ -314,7 +294,7 @@ public class Bookstore {
             if (order.getCompletionDate() != null) {
                 sb.append("Дата выполнения: ").append(order.getCompletionDate()).append("\n");
             }
-            sb.append("Общая стоимость: ").append(order.getTotalPrice()).append(" руб.\n");
+            sb.append("Общая стоимость: ").append(order.calculateTotalPrice()).append(" руб.\n");
             sb.append("Книги в заказе:\n");
             order.getBooks().forEach(book -> 
                 sb.append(" - ").append(book.getTitle()).append(" (")
