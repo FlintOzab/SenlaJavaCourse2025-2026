@@ -1,6 +1,23 @@
 package model;
 
 import exception.CSVImportException;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.NamedQueries;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -15,6 +32,18 @@ import java.util.stream.Collectors;
  * @author Bookstore Team
  * @version 1.0
  */
+@Entity
+@Table(name = "orders")
+@NamedQueries({
+    @NamedQuery(
+        name = "Order.findByStatus",
+        query = "SELECT o FROM Order o WHERE o.status = :status ORDER BY o.creationDate DESC"
+    ),
+    @NamedQuery(
+        name = "Order.findCompletedInPeriod",
+        query = "SELECT o FROM Order o WHERE o.status = 'COMPLETED' AND o.completionDate BETWEEN :startDate AND :endDate ORDER BY o.completionDate DESC"
+    )
+})
 public class Order implements Serializable {
     
     /** Serial version UID. */
@@ -25,6 +54,45 @@ public class Order implements Serializable {
     
     /** Default timestamp for missing dates. */
     private static final long DEFAULT_TIMESTAMP = 0L;
+    
+    /** Magic number 5 for array access. */
+    private static final int INDEX_5 = 5;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Integer id;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private OrderStatus status;
+    
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "creation_date", nullable = false)
+    private Date creationDate;
+    
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "completion_date")
+    private Date completionDate;
+    
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+    private List<OrderItem> orderItems = new ArrayList<>();
+    
+    @Column(name = "total_price")
+    private Long totalPrice;
+    
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", updatable = false)
+    private Date createdAt;
+    
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at")
+    private Date updatedAt;
+    
+    /**
+     * Books in the order (for backward compatibility).
+     */
+    private transient List<Book> books;
     
     /**
      * Enumeration of possible order statuses.
@@ -37,66 +105,65 @@ public class Order implements Serializable {
         COMPLETED,
         
         /** Cancelled order. */
-        CANCELLED
+        CANCELLED;
+        
+        /**
+         * Returns a string representation of the enum.
+         * 
+         * @return the string representation
+         */
+        @Override
+        public String toString() {
+            return this.name();
+        }
     }
-       
-    /** Order ID. */
-    private Integer id;
-    
-    /** Books in the order. */
-    private List<Book> books;
-    
-    /** Order status. */
-    private OrderStatus status;
-    
-    /** Order creation date. */
-    private Date creationDate;
-    
-    /** Order completion date. */
-    private Date completionDate;
-    
-    /** Creation timestamp. */
-    private Date createdAt;
-    
-    /** Last update timestamp. */
-    private Date updatedAt;
-    
+
     /**
      * Default constructor.
      */
     public Order() {
+        this.status = OrderStatus.NEW;
+        this.creationDate = new Date();
         this.books = new ArrayList<>();
     }
     
     /**
      * Constructs a new order without ID.
      * 
-     * @param books the books in the order
+     * @param booksValue the books in the order
      */
-    public Order(final List<Book> books) {
-        this.books = new ArrayList<>(books);
+    public Order(final List<Book> booksValue) {
+        this.books = new ArrayList<>(booksValue);
         this.status = OrderStatus.NEW;
         this.creationDate = new Date();
         this.completionDate = null;
+        this.orderItems = new ArrayList<>();
+        for (Book book : booksValue) {
+            addOrderItem(book);
+        }
     }
     
     /**
      * Constructs a new order with all fields.
      * 
-     * @param id the order ID
-     * @param books the books in the order
-     * @param status the order status
-     * @param creationDate the creation date
-     * @param completionDate the completion date
+     * @param idValue the order ID
+     * @param booksValue the books in the order
+     * @param statusValue the order status
+     * @param creationDateValue the creation date
+     * @param completionDateValue the completion date
      */
-    public Order(final Integer id, final List<Book> books,
-                  final OrderStatus status, final Date creationDate,
-                  final Date completionDate) {
-        this.id = id;
-        this.books = new ArrayList<>(books);
-        this.status = status;
-        this.creationDate = creationDate;
-        this.completionDate = completionDate;
+    public Order(final Integer idValue, final List<Book> booksValue,
+                  final OrderStatus statusValue, final Date creationDateValue,
+                  final Date completionDateValue) {
+        this.id = idValue;
+        this.books = new ArrayList<>(booksValue);
+        this.status = statusValue;
+        this.creationDate = creationDateValue;
+        this.completionDate = completionDateValue;
+        this.orderItems = new ArrayList<>();
+        for (Book book : booksValue) {
+            addOrderItem(book);
+        }
     }
 
     /**
@@ -111,10 +178,10 @@ public class Order implements Serializable {
     /**
      * Sets the order ID.
      * 
-     * @param id the new ID
+     * @param idValue the new ID
      */
-    public void setId(final Integer id) {
-        this.id = id;
+    public void setId(final Integer idValue) {
+        this.id = idValue;
     }
     
     /**
@@ -123,16 +190,30 @@ public class Order implements Serializable {
      * @return copy of the books list
      */
     public List<Book> getBooks() {
+        if (books == null) {
+            books = new ArrayList<>();
+            if (orderItems != null) {
+                for (OrderItem item : orderItems) {
+                    if (item.getBook() != null) {
+                        books.add(item.getBook());
+                    }
+                }
+            }
+        }
         return new ArrayList<>(books);
     }
     
     /**
      * Sets the books in the order.
      * 
-     * @param books the new books list
+     * @param booksValue the new books list
      */
-    public void setBooks(final List<Book> books) {
-        this.books = new ArrayList<>(books);
+    public void setBooks(final List<Book> booksValue) {
+        this.books = new ArrayList<>(booksValue);
+        this.orderItems.clear();
+        for (Book book : booksValue) {
+            addOrderItem(book);
+        }
     }
     
     /**
@@ -147,10 +228,10 @@ public class Order implements Serializable {
     /**
      * Sets the order status.
      * 
-     * @param status the new status
+     * @param statusValue the new status
      */
-    public void setStatus(final OrderStatus status) {
-        this.status = status;
+    public void setStatus(final OrderStatus statusValue) {
+        this.status = statusValue;
     }
     
     /**
@@ -165,10 +246,10 @@ public class Order implements Serializable {
     /**
      * Sets the creation date.
      * 
-     * @param creationDate the new creation date
+     * @param creationDateValue the new creation date
      */
-    public void setCreationDate(final Date creationDate) {
-        this.creationDate = creationDate;
+    public void setCreationDate(final Date creationDateValue) {
+        this.creationDate = creationDateValue;
     }
     
     /**
@@ -183,10 +264,37 @@ public class Order implements Serializable {
     /**
      * Sets the completion date.
      * 
-     * @param completionDate the new completion date
+     * @param completionDateValue the new completion date
      */
-    public void setCompletionDate(final Date completionDate) {
-        this.completionDate = completionDate;
+    public void setCompletionDate(final Date completionDateValue) {
+        this.completionDate = completionDateValue;
+    }
+    
+    /**
+     * Gets the order items.
+     * 
+     * @return list of order items
+     */
+    public List<OrderItem> getOrderItems() {
+        return orderItems;
+    }
+    
+    /**
+     * Sets the order items.
+     * 
+     * @param orderItemsValue the order items
+     */
+    public void setOrderItems(final List<OrderItem> orderItemsValue) {
+        this.orderItems = orderItemsValue;
+    }
+    
+    /**
+     * Gets the total price.
+     * 
+     * @return the total price
+     */
+    public Long getTotalPrice() {
+        return totalPrice;
     }
     
     /**
@@ -201,10 +309,10 @@ public class Order implements Serializable {
     /**
      * Sets the creation timestamp.
      * 
-     * @param createdAt the new creation timestamp
+     * @param createdAtValue the new creation timestamp
      */
-    public void setCreatedAt(final Date createdAt) {
-        this.createdAt = createdAt;
+    public void setCreatedAt(final Date createdAtValue) {
+        this.createdAt = createdAtValue;
     }
     
     /**
@@ -219,21 +327,55 @@ public class Order implements Serializable {
     /**
      * Sets the last update timestamp.
      * 
-     * @param updatedAt the new last update timestamp
+     * @param updatedAtValue the new last update timestamp
      */
-    public void setUpdatedAt(final Date updatedAt) {
-        this.updatedAt = updatedAt;
+    public void setUpdatedAt(final Date updatedAtValue) {
+        this.updatedAt = updatedAtValue;
+    }
+    
+    /**
+     * Lifecycle callback for pre-persist.
+     */
+    @PrePersist
+    protected void onCreate() {
+        createdAt = new Date();
+        updatedAt = new Date();
+        if (creationDate == null) {
+            creationDate = new Date();
+        }
+        calculateTotalPrice();
+    }
+    
+    /**
+     * Lifecycle callback for pre-update.
+     */
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = new Date();
+        calculateTotalPrice();
     }
     
     /**
      * Calculates total price of the order.
-     * 
-     * @return the total price
      */
-    public long getTotalPrice() {
-        return books.stream()
-            .mapToLong(Book::getPrice)
-            .sum();
+    private void calculateTotalPrice() {
+        if (orderItems != null) {
+            totalPrice = orderItems.stream()
+                .mapToLong(item -> item.getBook() != null ? item.getBook().getPrice() : 0L)
+                .sum();
+        }
+    }
+    
+    /**
+     * Helper method to add order item.
+     * 
+     * @param book the book to add
+     */
+    public void addOrderItem(final Book book) {
+        OrderItem item = new OrderItem();
+        item.setOrder(this);
+        item.setBook(book);
+        orderItems.add(item);
     }
     
     /**
@@ -242,7 +384,7 @@ public class Order implements Serializable {
      * @return true if contains out of stock books
      */
     public boolean containsOutOfStockBooks() {
-        return books.stream()
+        return getBooks().stream()
             .anyMatch(book -> book.getStatus() == Book.BookStatus.OUT_OF_STOCK);
     }
     
@@ -252,7 +394,7 @@ public class Order implements Serializable {
      * @return list of out of stock books
      */
     public List<Book> getOutOfStockBooks() {
-        return books.stream()
+        return getBooks().stream()
             .filter(book -> book.getStatus() == Book.BookStatus.OUT_OF_STOCK)
             .collect(Collectors.toList());
     }
@@ -278,7 +420,7 @@ public class Order implements Serializable {
     public String toString() {
         return String.format(
             "Заказ #%d - Статус: %s - Сумма: %d руб. - Книг: %d", 
-            id, status, getTotalPrice(), books.size());
+            id, status, getTotalPrice(), getBooks().size());
     }
     
     /**
@@ -287,7 +429,7 @@ public class Order implements Serializable {
      * @return CSV string representation
      */
     public String toCSV() {
-        String booksList = books.stream()
+        String booksList = getBooks().stream()
             .map(Book::toCSV)
             .collect(Collectors.joining(";"));
             
@@ -315,8 +457,8 @@ public class Order implements Serializable {
      */
     public static Order fromCSV(final String csvLine) throws CSVImportException {
         try {
-            String[] parts = csvLine.split(",", 5);
-            if (parts.length < 5) {
+            String[] parts = csvLine.split(",", INDEX_5);
+            if (parts.length < INDEX_5) {
                 throw new CSVImportException(
                     "Недостаточно данных для заказа: " + csvLine);
             }
@@ -338,13 +480,14 @@ public class Order implements Serializable {
                 }
             }
             
-            OrderStatus status = OrderStatus.valueOf(parts[2]);
-            Date creationDate = new Date(Long.parseLong(parts[3]));
-            Date completionDate = parts[4].isEmpty() 
+            OrderStatus statusValue = OrderStatus.valueOf(parts[2]);
+            Date creationDateValue = new Date(Long.parseLong(parts[3]));
+            Date completionDateValue = parts[4].isEmpty() 
                 ? null 
                 : new Date(Long.parseLong(parts[4]));
             
-            return new Order(orderId, bookList, status, creationDate, completionDate);
+            return new Order(orderId, bookList, statusValue, 
+                           creationDateValue, completionDateValue);
             
         } catch (Exception e) {
             throw new CSVImportException(

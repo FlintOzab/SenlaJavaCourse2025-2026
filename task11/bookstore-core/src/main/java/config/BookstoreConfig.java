@@ -1,7 +1,7 @@
 package config;
 
-import di.annotation.Component;
-import di.annotation.ConfigProperty;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -42,53 +42,90 @@ public class BookstoreConfig {
     private static final int DEFAULT_MAX_BOOKS = 10;
     
     /** Stale months threshold property. */
-    @ConfigProperty(propertyName = "stale.months.threshold", 
-                    type = ConfigProperty.PropertyType.INTEGER)
+    @Value("${stale.months.threshold:6}")
     private int staleMonthsThreshold;
     
     /** Auto fulfill requests property. */
-    @ConfigProperty(propertyName = "auto.fulfill.requests", 
-                    type = ConfigProperty.PropertyType.BOOLEAN)
+    @Value("${auto.fulfill.requests:true}")
     private boolean autoFulfillRequests;
     
     /** Default book price property. */
-    @ConfigProperty(propertyName = "default.book.price", 
-                    type = ConfigProperty.PropertyType.LONG)
+    @Value("${default.book.price:100}")
     private long defaultBookPrice;
     
     /** Export directory property. */
-    @ConfigProperty(propertyName = "export.directory")
+    @Value("${export.directory:./exports/}")
     private String exportDirectory;
     
     /** Max books per order property. */
-    @ConfigProperty(propertyName = "max.books.per.order", 
-                    type = ConfigProperty.PropertyType.INTEGER)
+    @Value("${max.books.per.order:10}")
     private int maxBooksPerOrder;
     
     /** Allowed formats property. */
-    @ConfigProperty(propertyName = "allowed.formats", 
-                    type = ConfigProperty.PropertyType.LIST)
-    private List<String> allowedFormats;
+    @Value("${allowed.formats:}")
+    private String allowedFormatsString;
     
     /** Discount rates property. */
-    @ConfigProperty(propertyName = "discount.rates", 
-                    type = ConfigProperty.PropertyType.ARRAY)
-    private Double[] discountRates;
+    @Value("${discount.rates:}")
+    private String discountRatesString;
     
     /** Maintenance date property. */
-    @ConfigProperty(propertyName = "maintenance.date", 
-                    type = ConfigProperty.PropertyType.DATE)
+    @Value("${maintenance.date:}")
+    private String maintenanceDateString;
+    
+    /** Allowed formats list. */
+    private List<String> allowedFormats;
+    
+    /** Discount rates array. */
+    private Double[] discountRates;
+    
+    /** Maintenance date. */
     private Date maintenanceDate;
     
     /**
      * Constructs a new BookstoreConfig with default values.
      */
     public BookstoreConfig() {
-        this.staleMonthsThreshold = DEFAULT_STALE_THRESHOLD;
-        this.autoFulfillRequests = DEFAULT_AUTO_FULFILL;
-        this.defaultBookPrice = DEFAULT_BOOK_PRICE;
-        this.exportDirectory = DEFAULT_EXPORT_DIR;
-        this.maxBooksPerOrder = DEFAULT_MAX_BOOKS;
+        // Initialize parsed fields after property injection
+        parseComplexProperties();
+    }
+    
+    /**
+     * Post-construct method to parse complex properties.
+     */
+    private void parseComplexProperties() {
+        // Parse allowed formats
+        if (allowedFormatsString != null && !allowedFormatsString.isEmpty()) {
+            String[] parts = allowedFormatsString.split(",");
+            allowedFormats = new ArrayList<>();
+            for (String part : parts) {
+                allowedFormats.add(part.trim());
+            }
+        }
+        
+        // Parse discount rates
+        if (discountRatesString != null && !discountRatesString.isEmpty()) {
+            String[] parts = discountRatesString.split(",");
+            List<Double> rates = new ArrayList<>();
+            for (String part : parts) {
+                try {
+                    rates.add(Double.parseDouble(part.trim()));
+                } catch (NumberFormatException e) {
+                    // Ignore invalid values
+                }
+            }
+            discountRates = rates.toArray(new Double[0]);
+        }
+        
+        // Parse maintenance date
+        if (maintenanceDateString != null && !maintenanceDateString.isEmpty()) {
+            try {
+                SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
+                maintenanceDate = dateFormat.parse(maintenanceDateString);
+            } catch (Exception e) {
+                // Ignore parse errors
+            }
+        }
     }
     
     /**
@@ -218,12 +255,12 @@ public class BookstoreConfig {
         properties.setProperty("max.books.per.order", 
             String.valueOf(maxBooksPerOrder));
         
-        if (allowedFormats != null) {
+        if (allowedFormats != null && !allowedFormats.isEmpty()) {
             properties.setProperty("allowed.formats", 
                 String.join(",", allowedFormats));
         }
         
-        if (discountRates != null) {
+        if (discountRates != null && discountRates.length > 0) {
             List<String> rates = new ArrayList<>();
             for (Double rate : discountRates) {
                 rates.add(String.valueOf(rate));

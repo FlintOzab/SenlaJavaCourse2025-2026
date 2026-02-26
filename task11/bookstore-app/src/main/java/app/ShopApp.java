@@ -7,9 +7,9 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-import di.annotation.Component;
-import di.annotation.Inject;
 import config.BookstoreConfig;
 import app.control.BookstoreController;
 import app.control.ConsoleMenuController;
@@ -63,7 +63,7 @@ public class ShopApp {
      * @param input the input component
      * @param stateManager the state manager
      */
-    @Inject
+    @Autowired  // Changed from @Inject to @Autowired
     public ShopApp(final BookstoreController controller, 
                    final ConsoleMenuController menuController,
                    final ConsoleDisplay display, 

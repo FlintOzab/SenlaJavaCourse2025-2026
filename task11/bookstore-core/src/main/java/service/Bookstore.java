@@ -5,8 +5,6 @@ import dao.DAOFactory;
 import dao.OrderDAO;
 import dao.RequestDAO;
 import config.BookstoreConfig;
-import di.annotation.Component;
-import di.annotation.Inject;
 import exception.BookstoreException;
 import exception.EntityNotFoundException;
 import exception.ValidationException;
@@ -15,6 +13,9 @@ import model.Book;
 import model.Book.BookStatus;
 import model.Order;
 import model.Order.OrderStatus;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -36,25 +37,29 @@ import java.util.Optional;
 public class Bookstore {
     
     /** Transaction manager for database operations. */
-    private final TransactionManager transactionManager;
+    private TransactionManager transactionManager;
     
     /** Book DAO. */
-    private final BookDAO bookDAO;
+    private BookDAO bookDAO;
     
     /** Order DAO. */
-    private final OrderDAO orderDAO;
+    private OrderDAO orderDAO;
     
     /** Request DAO. */
-    private final RequestDAO requestDAO;
+    private RequestDAO requestDAO;
     
     /** Bookstore configuration. */
-    private final BookstoreConfig config;
+    private BookstoreConfig config;
     
     /** Milliseconds in a day for date calculations. */
     private static final long MILLIS_IN_DAY = 1000L * 60 * 60 * 24;
     
     /** Days in a month approximation. */
     private static final long DAYS_IN_MONTH = 30L;
+   
+    public Bookstore() {
+        // Default constructor for Spring
+    }
     
     /**
      * Constructs a new Bookstore with the specified dependencies.
@@ -63,10 +68,10 @@ public class Bookstore {
      * @param daoFactory the DAO factory
      * @param config the bookstore configuration
      */
-    @Inject
-    public Bookstore(final TransactionManager transactionManager,
-                      final DAOFactory daoFactory,
-                      final BookstoreConfig config) {
+    @Autowired
+    public Bookstore(TransactionManager transactionManager,
+                      DAOFactory daoFactory,
+                      BookstoreConfig config) {
         this.transactionManager = transactionManager;
         this.bookDAO = daoFactory.getBookDAO();
         this.orderDAO = daoFactory.getOrderDAO();

@@ -1,6 +1,23 @@
 package model;
 
 import exception.CSVImportException;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.NamedQueries;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -14,6 +31,22 @@ import java.util.Objects;
  * @author Bookstore Team
  * @version 1.0
  */
+@Entity
+@Table(name = "books")
+@NamedQueries({
+    @NamedQuery(
+        name = "Book.findByIsbn",
+        query = "SELECT b FROM Book b WHERE b.isbn = :isbn"
+    ),
+    @NamedQuery(
+        name = "Book.findByStatus",
+        query = "SELECT b FROM Book b WHERE b.status = :status ORDER BY b.title"
+    ),
+    @NamedQuery(
+        name = "Book.findByOrderId",
+        query = "SELECT b FROM Book b JOIN b.orderItems oi WHERE oi.order.id = :orderId"
+    )
+})
 public class Book implements Serializable {
     
     /** Serial version UID. */
@@ -21,6 +54,67 @@ public class Book implements Serializable {
     
     /** Default timestamp value for missing dates. */
     private static final long DEFAULT_TIMESTAMP = 0L;
+    
+    /** Magic number 3 for array access. */
+    private static final int INDEX_3 = 3;
+    
+    /** Magic number 4 for array access. */
+    private static final int INDEX_4 = 4;
+    
+    /** Magic number 5 for array access. */
+    private static final int INDEX_5 = 5;
+    
+    /** Magic number 6 for array access. */
+    private static final int INDEX_6 = 6;
+    
+    /** Magic number 7 for array access. */
+    private static final int INDEX_7 = 7;
+    
+    /** Magic number 8 for array access. */
+    private static final int INDEX_8 = 8;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Integer id;
+    
+    @Column(name = "isbn", unique = true, nullable = false, length = 20)
+    private String isbn;
+    
+    @Column(name = "title", nullable = false, length = 255)
+    private String title;
+    
+    @Column(name = "author", nullable = false, length = 255)
+    private String author;
+    
+    @Column(name = "price", nullable = false)
+    private Long price;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private BookStatus status;
+    
+    @Temporal(TemporalType.DATE)
+    @Column(name = "publication_date")
+    private Date publicationDate;
+    
+    @Temporal(TemporalType.DATE)
+    @Column(name = "arrival_date")
+    private Date arrivalDate;
+    
+    @Column(name = "description", length = 1000)
+    private String description;
+    
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", updatable = false)
+    private Date createdAt;
+    
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at")
+    private Date updatedAt;
+    
+    @OneToMany(mappedBy = "book", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<OrderItem> orderItems;
     
     /**
      * Enumeration of possible book statuses.
@@ -30,98 +124,76 @@ public class Book implements Serializable {
         IN_STOCK,
         
         /** Book is out of stock. */
-        OUT_OF_STOCK
+        OUT_OF_STOCK;
+        
+        /**
+         * Returns a string representation of the enum.
+         * 
+         * @return the string representation
+         */
+        @Override
+        public String toString() {
+            return this.name();
+        }
     }
-    
-    /** Book ID. */
-    private Integer id;
-    
-    /** Book ISBN. */
-    private String isbn;
-    
-    /** Book title. */
-    private String title;
-    
-    /** Book author. */
-    private String author;
-    
-    /** Book price. */
-    private Long price;
-    
-    /** Book status. */
-    private BookStatus status;
-    
-    /** Book publication date. */
-    private Date publicationDate;
-    
-    /** Book arrival date. */
-    private Date arrivalDate;
-    
-    /** Book description. */
-    private String description;
-    
-    /** Creation timestamp. */
-    private Date createdAt;
-    
-    /** Last update timestamp. */
-    private Date updatedAt;
     
     /**
      * Default constructor.
      */
     public Book() {
+        this.status = BookStatus.IN_STOCK;
     }
     
     /**
      * Constructs a new book without ID.
      * 
-     * @param isbn the ISBN
-     * @param title the title
-     * @param author the author
-     * @param price the price
-     * @param publicationDate the publication date
-     * @param arrivalDate the arrival date
-     * @param description the description
+     * @param isbnValue the ISBN
+     * @param titleValue the title
+     * @param authorValue the author
+     * @param priceValue the price
+     * @param publicationDateValue the publication date
+     * @param arrivalDateValue the arrival date
+     * @param descriptionValue the description
      */
-    public Book(final String isbn, final String title, final String author,
-                 final Long price, final Date publicationDate,
-                 final Date arrivalDate, final String description) {
-        this.isbn = isbn;
-        this.title = title;
-        this.author = author;
-        this.price = price;
+    public Book(final String isbnValue, final String titleValue, final String authorValue,
+                 final Long priceValue, final Date publicationDateValue,
+                 final Date arrivalDateValue, final String descriptionValue) {
+        this.isbn = isbnValue;
+        this.title = titleValue;
+        this.author = authorValue;
+        this.price = priceValue;
         this.status = BookStatus.IN_STOCK;
-        this.publicationDate = publicationDate;
-        this.arrivalDate = arrivalDate;
-        this.description = description;
+        this.publicationDate = publicationDateValue;
+        this.arrivalDate = arrivalDateValue;
+        this.description = descriptionValue;
     }
     
     /**
      * Constructs a new book with all fields.
      * 
-     * @param id the ID
-     * @param isbn the ISBN
-     * @param title the title
-     * @param author the author
-     * @param price the price
-     * @param status the status
-     * @param publicationDate the publication date
-     * @param arrivalDate the arrival date
-     * @param description the description
+     * @param idValue the ID
+     * @param isbnValue the ISBN
+     * @param titleValue the title
+     * @param authorValue the author
+     * @param priceValue the price
+     * @param statusValue the status
+     * @param publicationDateValue the publication date
+     * @param arrivalDateValue the arrival date
+     * @param descriptionValue the description
      */
-    public Book(final Integer id, final String isbn, final String title,
-                 final String author, final Long price, final BookStatus status,
-                 final Date publicationDate, final Date arrivalDate,
-                 final String description) {
-        this.id = id;
-        this.isbn = isbn;
-        this.title = title;
-        this.author = author;
-        this.price = price;
-        this.status = status;
-        this.publicationDate = publicationDate;
-        this.arrivalDate = arrivalDate;
-        this.description = description;
+    public Book(final Integer idValue, final String isbnValue, final String titleValue,
+                 final String authorValue, final Long priceValue, final BookStatus statusValue,
+                 final Date publicationDateValue, final Date arrivalDateValue,
+                 final String descriptionValue) {
+        this.id = idValue;
+        this.isbn = isbnValue;
+        this.title = titleValue;
+        this.author = authorValue;
+        this.price = priceValue;
+        this.status = statusValue;
+        this.publicationDate = publicationDateValue;
+        this.arrivalDate = arrivalDateValue;
+        this.description = descriptionValue;
     }
 
     /**
@@ -136,10 +208,10 @@ public class Book implements Serializable {
     /**
      * Sets the book ID.
      * 
-     * @param id the new ID
+     * @param idValue the new ID
      */
-    public void setId(final Integer id) {
-        this.id = id;
+    public void setId(final Integer idValue) {
+        this.id = idValue;
     }
     
     /**
@@ -154,10 +226,10 @@ public class Book implements Serializable {
     /**
      * Sets the ISBN.
      * 
-     * @param isbn the new ISBN
+     * @param isbnValue the new ISBN
      */
-    public void setIsbn(final String isbn) {
-        this.isbn = isbn;
+    public void setIsbn(final String isbnValue) {
+        this.isbn = isbnValue;
     }
     
     /**
@@ -172,10 +244,10 @@ public class Book implements Serializable {
     /**
      * Sets the title.
      * 
-     * @param title the new title
+     * @param titleValue the new title
      */
-    public void setTitle(final String title) {
-        this.title = title;
+    public void setTitle(final String titleValue) {
+        this.title = titleValue;
     }
     
     /**
@@ -190,10 +262,10 @@ public class Book implements Serializable {
     /**
      * Sets the author.
      * 
-     * @param author the new author
+     * @param authorValue the new author
      */
-    public void setAuthor(final String author) {
-        this.author = author;
+    public void setAuthor(final String authorValue) {
+        this.author = authorValue;
     }
     
     /**
@@ -208,10 +280,10 @@ public class Book implements Serializable {
     /**
      * Sets the price.
      * 
-     * @param price the new price
+     * @param priceValue the new price
      */
-    public void setPrice(final Long price) {
-        this.price = price;
+    public void setPrice(final Long priceValue) {
+        this.price = priceValue;
     }
     
     /**
@@ -226,10 +298,10 @@ public class Book implements Serializable {
     /**
      * Sets the status.
      * 
-     * @param status the new status
+     * @param statusValue the new status
      */
-    public void setStatus(final BookStatus status) {
-        this.status = status;
+    public void setStatus(final BookStatus statusValue) {
+        this.status = statusValue;
     }
     
     /**
@@ -244,10 +316,10 @@ public class Book implements Serializable {
     /**
      * Sets the publication date.
      * 
-     * @param publicationDate the new publication date
+     * @param publicationDateValue the new publication date
      */
-    public void setPublicationDate(final Date publicationDate) {
-        this.publicationDate = publicationDate;
+    public void setPublicationDate(final Date publicationDateValue) {
+        this.publicationDate = publicationDateValue;
     }
     
     /**
@@ -262,10 +334,10 @@ public class Book implements Serializable {
     /**
      * Sets the arrival date.
      * 
-     * @param arrivalDate the new arrival date
+     * @param arrivalDateValue the new arrival date
      */
-    public void setArrivalDate(final Date arrivalDate) {
-        this.arrivalDate = arrivalDate;
+    public void setArrivalDate(final Date arrivalDateValue) {
+        this.arrivalDate = arrivalDateValue;
     }
     
     /**
@@ -280,10 +352,10 @@ public class Book implements Serializable {
     /**
      * Sets the description.
      * 
-     * @param description the new description
+     * @param descriptionValue the new description
      */
-    public void setDescription(final String description) {
-        this.description = description;
+    public void setDescription(final String descriptionValue) {
+        this.description = descriptionValue;
     }
     
     /**
@@ -298,10 +370,10 @@ public class Book implements Serializable {
     /**
      * Sets the creation timestamp.
      * 
-     * @param createdAt the new creation timestamp
+     * @param createdAtValue the new creation timestamp
      */
-    public void setCreatedAt(final Date createdAt) {
-        this.createdAt = createdAt;
+    public void setCreatedAt(final Date createdAtValue) {
+        this.createdAt = createdAtValue;
     }
     
     /**
@@ -316,10 +388,48 @@ public class Book implements Serializable {
     /**
      * Sets the last update timestamp.
      * 
-     * @param updatedAt the new last update timestamp
+     * @param updatedAtValue the new last update timestamp
      */
-    public void setUpdatedAt(final Date updatedAt) {
-        this.updatedAt = updatedAt;
+    public void setUpdatedAt(final Date updatedAtValue) {
+        this.updatedAt = updatedAtValue;
+    }
+    
+    /**
+     * Gets the order items.
+     * 
+     * @return list of order items
+     */
+    public List<OrderItem> getOrderItems() {
+        if (orderItems == null) {
+            orderItems = new ArrayList<>();
+        }
+        return orderItems;
+    }
+    
+    /**
+     * Sets the order items.
+     * 
+     * @param orderItemsValue the order items
+     */
+    public void setOrderItems(final List<OrderItem> orderItemsValue) {
+        this.orderItems = orderItemsValue;
+    }
+    
+    /**
+     * Lifecycle callback for pre-persist.
+     */
+    @PrePersist
+    protected void onCreate() {
+        createdAt = new Date();
+        updatedAt = new Date();
+    }
+    
+    /**
+     * Lifecycle callback for pre-update.
+     */
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = new Date();
     }
     
     @Override
@@ -367,23 +477,24 @@ public class Book implements Serializable {
     public static Book fromCSV(final String csvLine) throws CSVImportException {
         try {
             String[] parts = parseCSVLine(csvLine);
-            if (parts.length < 9) {
+            if (parts.length < INDEX_8 + 1) {
                 throw new CSVImportException(
                     "Недостаточно данных для книги: " + csvLine);
             }
             
-            Integer id = parts[0].isEmpty() ? null : Integer.parseInt(parts[0]);
-            String isbn = parts[1];
-            String title = parts[2];
-            String author = parts[3];
-            Long price = Long.parseLong(parts[4]);
-            BookStatus status = BookStatus.valueOf(parts[5]);
-            Date publicationDate = new Date(Long.parseLong(parts[6]));
-            Date arrivalDate = new Date(Long.parseLong(parts[7]));
-            String description = parts[8].replace("\\,", ",");
+            Integer idValue = parts[0].isEmpty() ? null : Integer.parseInt(parts[0]);
+            String isbnValue = parts[1];
+            String titleValue = parts[2];
+            String authorValue = parts[INDEX_3];
+            Long priceValue = Long.parseLong(parts[INDEX_4]);
+            BookStatus statusValue = BookStatus.valueOf(parts[INDEX_5]);
+            Date publicationDateValue = new Date(Long.parseLong(parts[INDEX_6]));
+            Date arrivalDateValue = new Date(Long.parseLong(parts[INDEX_7]));
+            String descriptionValue = parts[INDEX_8].replace("\\,", ",");
             
-            return new Book(id, isbn, title, author, price, status, 
-                           publicationDate, arrivalDate, description);
+            return new Book(idValue, isbnValue, titleValue, authorValue, priceValue, 
+                           statusValue, publicationDateValue, arrivalDateValue, 
+                           descriptionValue);
         } catch (Exception e) {
             throw new CSVImportException(
                 "Ошибка парсинга книги: " + e.getMessage(), e);

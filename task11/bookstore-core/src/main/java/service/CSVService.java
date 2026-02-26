@@ -1,11 +1,12 @@
 package service;
 
-import di.annotation.Component;
 import exception.BookstoreException;
 import exception.CSVImportException;
 import model.Book;
 import model.Order;
 import model.Request;
+
+import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

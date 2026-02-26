@@ -1,8 +1,9 @@
 package service;
 
-import di.annotation.Component;
-import di.annotation.Inject;
 import exception.BookstoreException;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -22,7 +23,7 @@ import java.io.StreamCorruptedException;
  * @author Bookstore Team
  * @version 1.0
  */
-@Component
+@Component  
 public class StateManager {
 
     /** State file name. */
@@ -42,7 +43,7 @@ public class StateManager {
      *
      * @param bookstore the bookstore instance
      */
-    @Inject
+    @Autowired  // Changed from @Inject to @Autowired
     public StateManager(final Bookstore bookstore) {
         this.bookstore = bookstore;
     }

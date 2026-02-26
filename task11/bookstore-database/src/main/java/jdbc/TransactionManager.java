@@ -1,7 +1,7 @@
 package jdbc;
 
-import di.annotation.Component;
-import di.annotation.Inject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -17,16 +17,19 @@ import java.sql.SQLException;
 public class TransactionManager {
     
     /** The database connection. */
-    private final DatabaseConnection connection;
+    private DatabaseConnection databaseConnection;
     
+    @Autowired
+    public TransactionManager() {
+    }
     /**
      * Constructs a new TransactionManager with the specified connection.
      * 
-     * @param connection the database connection
+     * @param databaseConnection the database connection
      */
-    @Inject
-    public TransactionManager(final DatabaseConnection connection) {
-        this.connection = connection;
+    @Autowired
+    public TransactionManager(DatabaseConnection databaseConnection) {
+        this.databaseConnection = databaseConnection;
     }
     
     /**
@@ -53,7 +56,7 @@ public class TransactionManager {
         boolean originalAutoCommit = false;
         
         try {
-            conn = connection.getConnection();
+            conn = databaseConnection.getConnection();
             originalAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
             

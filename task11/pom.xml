@@ -23,6 +23,8 @@
         
         <project.version>1.0.0</project.version>
         
+        <spring.version>6.1.5</spring.version>
+        
         <log4j2.version>2.20.0</log4j2.version>
         <postgresql.version>42.6.0</postgresql.version>
         <slf4j.version>2.0.9</slf4j.version>
@@ -35,6 +37,10 @@
         <checkstyle.tool.version>10.12.4</checkstyle.tool.version>
         
         <checkstyle.config.path>${session.executionRootDirectory}/config/checkstyle</checkstyle.config.path>
+    
+        <jakarta.persistence.version>3.1.0</jakarta.persistence.version>
+        <hibernate.version>6.2.7.Final</hibernate.version>
+        <hibernate.validator.version>8.0.1.Final</hibernate.validator.version>
     </properties>
 
     <modules>
@@ -47,6 +53,14 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>${spring.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            
             <dependency>
                 <groupId>com.bookstore</groupId>
                 <artifactId>bookstore-app</artifactId>
@@ -73,7 +87,6 @@
                 <version>${project.version}</version>
             </dependency>
             
-            <!-- Log4j2 -->
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-bom</artifactId>
@@ -82,14 +95,12 @@
                 <type>pom</type>
             </dependency>
             
-            <!-- SLF4J -->
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
                 <version>${slf4j.version}</version>
             </dependency>
             
-            <!-- PostgreSQL -->
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
@@ -99,6 +110,22 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-orm</artifactId>
+        </dependency>
+        
+        <dependency>
+    		<groupId>org.flywaydb</groupId>
+    		<artifactId>flyway-core</artifactId>
+   			<version>9.22.3</version>
+		</dependency>
+        
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>

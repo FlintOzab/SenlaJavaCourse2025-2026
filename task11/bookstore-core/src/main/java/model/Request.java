@@ -4,82 +4,149 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.Objects;
 
+import jakarta.persistence.NamedQueries;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
 /**
  * Represents a request for a book that is out of stock.
  * 
  * @author Bookstore Team
  * @version 1.0
  */
+@Entity
+@Table(name = "requests")
+@NamedQueries({
+    @NamedQuery(
+        name = "Request.findByOrderId",
+        query = "SELECT r FROM Request r WHERE r.order.id = :orderId ORDER BY r.createdAt"
+    ),
+    @NamedQuery(
+        name = "Request.findByBookId",
+        query = "SELECT r FROM Request r WHERE r.book.id = :bookId ORDER BY r.createdAt"
+    ),
+    @NamedQuery(
+        name = "Request.findActive",
+        query = "SELECT r FROM Request r WHERE r.done = false ORDER BY r.createdAt"
+    )
+})
 public class Request implements Serializable {
-    
+
     /** Serial version UID. */
     private static final long serialVersionUID = 1L;
     
     /** Default ID for new requests. */
     private static final int DEFAULT_ID = 0;
     
-    /** Request ID. */
+    /** Magic number 4 for array access. */
+    private static final int INDEX_4 = 4;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Integer id;
     
-    /** Associated order ID. */
-    private Integer orderId;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
     
-    /** Associated book ID. */
-    private Integer bookId;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "book_id", nullable = false)
+    private Book book;
     
-    /** Request completion status. */
+    @Column(name = "done", nullable = false)
     private boolean done;
     
-    /** Creation timestamp. */
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "created_at", updatable = false)
     private Date createdAt;
     
-    /** Last update timestamp. */
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "updated_at")
     private Date updatedAt;
     
-    /** Transient reference to the associated order. */
-    private transient Order order;
+    /** Associated order ID (for backward compatibility). */
+    private transient Integer orderId;
     
-    /** Transient reference to the associated book. */
-    private transient Book book;
+    /** Associated book ID (for backward compatibility). */
+    private transient Integer bookId;
     
     /**
      * Default constructor.
      */
     public Request() {
+        this.done = false;
     }
     
     /**
      * Constructs a new request without ID.
      * 
-     * @param order the associated order
-     * @param book the associated book
+     * @param orderValue the associated order
+     * @param bookValue the associated book
      */
-    public Request(final Order order, final Book book) {
-        this.order = order;
-        this.book = book;
-        this.orderId = order != null ? order.getId() : null;
-        this.bookId = book != null ? book.getId() : null;
+    public Request(final Order orderValue, final Book bookValue) {
+        this.order = orderValue;
+        this.book = bookValue;
+        if (orderValue != null) {
+            this.orderId = orderValue.getId();
+        }
+        if (bookValue != null) {
+            this.bookId = bookValue.getId();
+        }
         this.done = false;
     }
     
     /**
      * Constructs a new request with all fields.
      * 
-     * @param id the request ID
-     * @param order the associated order
-     * @param book the associated book
-     * @param done the completion status
+     * @param idValue the request ID
+     * @param orderValue the associated order
+     * @param bookValue the associated book
+     * @param doneValue the completion status
      */
-    public Request(final Integer id, final Order order,
-                    final Book book, final boolean done) {
-        this.id = id;
-        this.order = order;
-        this.book = book;
-        this.orderId = order != null ? order.getId() : null;
-        this.bookId = book != null ? book.getId() : null;
-        this.done = done;
+    public Request(final Integer idValue, final Order orderValue,
+                    final Book bookValue, final boolean doneValue) {
+        this.id = idValue;
+        this.order = orderValue;
+        this.book = bookValue;
+        if (orderValue != null) {
+            this.orderId = orderValue.getId();
+        }
+        if (bookValue != null) {
+            this.bookId = bookValue.getId();
+        }
+        this.done = doneValue;
     }
 
+    /**
+     * Lifecycle callback for pre-persist.
+     */
+    @PrePersist
+    protected void onCreate() {
+        createdAt = new Date();
+        updatedAt = new Date();
+    }
+    
+    /**
+     * Lifecycle callback for pre-update.
+     */
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = new Date();
+    }
+    
     /**
      * Gets the request ID.
      * 
@@ -92,10 +159,10 @@ public class Request implements Serializable {
     /**
      * Sets the request ID.
      * 
-     * @param id the new ID
+     * @param idValue the new ID
      */
-    public void setId(final Integer id) {
-        this.id = id;
+    public void setId(final Integer idValue) {
+        this.id = idValue;
     }
     
     /**
@@ -104,16 +171,10 @@ public class Request implements Serializable {
      * @return the order ID
      */
     public Integer getOrderId() {
+        if (order != null) {
+            return order.getId();
+        }
         return orderId;
-    }
-    
-    /**
-     * Sets the order ID.
-     * 
-     * @param orderId the new order ID
-     */
-    public void setOrderId(final Integer orderId) {
-        this.orderId = orderId;
     }
     
     /**
@@ -122,16 +183,10 @@ public class Request implements Serializable {
      * @return the book ID
      */
     public Integer getBookId() {
+        if (book != null) {
+            return book.getId();
+        }
         return bookId;
-    }
-    
-    /**
-     * Sets the book ID.
-     * 
-     * @param bookId the new book ID
-     */
-    public void setBookId(final Integer bookId) {
-        this.bookId = bookId;
     }
     
     /**
@@ -146,10 +201,10 @@ public class Request implements Serializable {
     /**
      * Sets the completion status.
      * 
-     * @param done the new status
+     * @param doneValue the new status
      */
-    public void setDone(final boolean done) {
-        this.done = done;
+    public void setDone(final boolean doneValue) {
+        this.done = doneValue;
     }
     
     /**
@@ -164,10 +219,10 @@ public class Request implements Serializable {
     /**
      * Sets the creation timestamp.
      * 
-     * @param createdAt the new creation timestamp
+     * @param createdAtValue the new creation timestamp
      */
-    public void setCreatedAt(final Date createdAt) {
-        this.createdAt = createdAt;
+    public void setCreatedAt(final Date createdAtValue) {
+        this.createdAt = createdAtValue;
     }
     
     /**
@@ -182,10 +237,10 @@ public class Request implements Serializable {
     /**
      * Sets the last update timestamp.
      * 
-     * @param updatedAt the new last update timestamp
+     * @param updatedAtValue the new last update timestamp
      */
-    public void setUpdatedAt(final Date updatedAt) {
-        this.updatedAt = updatedAt;
+    public void setUpdatedAt(final Date updatedAtValue) {
+        this.updatedAt = updatedAtValue;
     }
     
     /**
@@ -198,13 +253,15 @@ public class Request implements Serializable {
     }
     
     /**
-     * Sets the associated order and updates order ID.
+     * Sets the associated order.
      * 
-     * @param order the new order
+     * @param orderValue the new order
      */
-    public void setOrder(final Order order) {
-        this.order = order;
-        this.orderId = order != null ? order.getId() : null;
+    public void setOrder(final Order orderValue) {
+        this.order = orderValue;
+        if (orderValue != null) {
+            this.orderId = orderValue.getId();
+        }
     }
     
     /**
@@ -217,13 +274,15 @@ public class Request implements Serializable {
     }
     
     /**
-     * Sets the associated book and updates book ID.
+     * Sets the associated book.
      * 
-     * @param book the new book
+     * @param bookValue the new book
      */
-    public void setBook(final Book book) {
-        this.book = book;
-        this.bookId = book != null ? book.getId() : null;
+    public void setBook(final Book bookValue) {
+        this.book = bookValue;
+        if (bookValue != null) {
+            this.bookId = bookValue.getId();
+        }
     }
     
     /**
@@ -236,19 +295,19 @@ public class Request implements Serializable {
     /**
      * Checks if the request matches a book.
      * 
-     * @param book the book to check
+     * @param bookValue the book to check
      * @return true if the request matches the book
      */
-    public boolean matchesBook(final Book book) {
-        return this.book != null && book != null 
-            && this.book.getIsbn().equals(book.getIsbn());
+    public boolean matchesBook(final Book bookValue) {
+        return this.book != null && bookValue != null 
+            && this.book.getIsbn().equals(bookValue.getIsbn());
     }
     
     @Override
     public String toString() {
         return String.format(
             "Запрос #%d - Заказ: %d, Книга: %d, Выполнен: %s", 
-            id, orderId, bookId, done ? "Да" : "Нет");
+            id, getOrderId(), getBookId(), done ? "Да" : "Нет");
     }
     
     /**
@@ -259,8 +318,8 @@ public class Request implements Serializable {
     public String toCSV() {
         return String.format("%d,%d,%d,%s",
                 id != null ? id : DEFAULT_ID,
-                orderId != null ? orderId : DEFAULT_ID,
-                bookId != null ? bookId : DEFAULT_ID,
+                getOrderId() != null ? getOrderId() : DEFAULT_ID,
+                getBookId() != null ? getBookId() : DEFAULT_ID,
                 done);
     }
     

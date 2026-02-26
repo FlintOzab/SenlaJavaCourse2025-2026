@@ -1,7 +1,7 @@
 package jdbc;
 
-import di.annotation.Component;
-import di.annotation.Inject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -10,7 +10,6 @@ import java.util.Properties;
 
 /**
  * Manages database connection for the application.
- * Implements singleton pattern to ensure single connection instance.
  * 
  * @author Bookstore Team
  * @version 1.0
@@ -18,14 +17,11 @@ import java.util.Properties;
 @Component
 public class DatabaseConnection {
     
-    /** Singleton instance. */
-    private static DatabaseConnection instance;
-    
     /** Database connection. */
     private Connection connection;
     
     /** Connection properties. */
-    private final Properties connectionProperties;
+    private Properties connectionProperties;
     
     /** PostgreSQL driver class name. */
     private static final String POSTGRESQL_DRIVER = "org.postgresql.Driver";
@@ -33,30 +29,18 @@ public class DatabaseConnection {
     /** Default prepare threshold value. */
     private static final String PREPARE_THRESHOLD = "0";
     
+    @Autowired
+    public DatabaseConnection() {
+    }
+    
     /**
      * Constructs a new DatabaseConnection with the specified properties.
      * 
      * @param connectionProperties the connection properties
      */
-    @Inject
+    @Autowired
     public DatabaseConnection(final Properties connectionProperties) {
         this.connectionProperties = connectionProperties;
-        if (instance == null) {
-            instance = this;
-        }
-    }
-    
-    /**
-     * Gets the singleton instance.
-     * 
-     * @return the database connection instance
-     * @throws IllegalStateException if not initialized
-     */
-    public static DatabaseConnection getInstance() {
-        if (instance == null) {
-            throw new IllegalStateException("DatabaseConnection не инициализирован");
-        }
-        return instance;
     }
     
     /**
