@@ -94,11 +94,11 @@ public class Book implements Serializable {
     @Column(name = "status", nullable = false, length = 20)
     private BookStatus status;
     
-    @Temporal(TemporalType.DATE)
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "publication_date")
     private Date publicationDate;
     
-    @Temporal(TemporalType.DATE)
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "arrival_date")
     private Date arrivalDate;
     

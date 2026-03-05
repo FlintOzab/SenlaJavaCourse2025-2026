@@ -42,7 +42,7 @@ public class FlywayConfig {
                         connectionProperties.getProperty("db.username"),
                         connectionProperties.getProperty("db.password")
                     )
-                    .locations("classpath:db/migration")
+                    .locations("classpath:migration")
                     .baselineOnMigrate(true)
                     .table("flyway_schema_history")
                     .encoding("UTF-8")

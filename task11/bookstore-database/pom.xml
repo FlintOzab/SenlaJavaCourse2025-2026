@@ -21,10 +21,6 @@
     </properties>
     
     <dependencies>
-        <dependency>
-            <groupId>com.bookstore</groupId>
-            <artifactId>bookstore-di</artifactId>
-        </dependency>
         
         <dependency>
             <groupId>org.postgresql</groupId>

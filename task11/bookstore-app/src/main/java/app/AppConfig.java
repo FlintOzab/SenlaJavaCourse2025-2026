@@ -3,6 +3,7 @@ package app;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.Import; 
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -22,6 +23,7 @@ import dao.jpa.JpaOrderDAO;
 import dao.jpa.JpaOrderDAOInterface;
 import dao.jpa.JpaRequestDAO;
 import dao.jpa.JpaRequestDAOInterface;
+import flyway.FlywayConfig; 
 import service.Bookstore;
 import service.CSVService;
 import service.StateManager;
@@ -42,6 +44,7 @@ import java.util.Properties;
 @Configuration
 @PropertySource("classpath:bookstore.properties")
 @EnableTransactionManagement
+@Import(FlywayConfig.class)
 public class AppConfig {
 
     private final Environment env;
@@ -85,7 +88,7 @@ public class AppConfig {
     public HibernateJpaVendorAdapter jpaVendorAdapter() {
         HibernateJpaVendorAdapter adapter = new HibernateJpaVendorAdapter();
         adapter.setShowSql(Boolean.parseBoolean(env.getProperty("hibernate.show_sql")));
-        adapter.setGenerateDdl(true);
+        adapter.setGenerateDdl(false); 
         adapter.setDatabasePlatform(env.getProperty("hibernate.dialect"));
         return adapter;
     }
@@ -132,6 +135,21 @@ public class AppConfig {
     @Bean
     public PlatformTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
         return new JpaTransactionManager(entityManagerFactory);
+    }
+    
+    /**
+     * Creates a Properties bean with connection properties.
+     * This bean is used by FlywayConfig.
+     * 
+     * @return the connection properties
+     */
+    @Bean
+    public Properties connectionProperties() {
+        Properties props = new Properties();
+        props.setProperty("db.url", env.getProperty("db.url"));
+        props.setProperty("db.username", env.getProperty("db.username"));
+        props.setProperty("db.password", env.getProperty("db.password"));
+        return props;
     }
     
     /**

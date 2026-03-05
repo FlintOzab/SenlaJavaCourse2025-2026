@@ -1,6 +1,5 @@
 package config;
 
-import di.annotation.ConfigProperty;
 import exception.ConfigurationException;
 
 import java.io.FileInputStream;
