@@ -22,10 +22,6 @@
         </dependency>
         <dependency>
             <groupId>com.bookstore</groupId>
-            <artifactId>bookstore-di</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.bookstore</groupId>
             <artifactId>bookstore-database</artifactId>
         </dependency>
     </dependencies>
