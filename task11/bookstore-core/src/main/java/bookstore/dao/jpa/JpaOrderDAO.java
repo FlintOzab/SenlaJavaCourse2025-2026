@@ -110,16 +110,24 @@ public class JpaOrderDAO implements JpaOrderDAOInterface {
     @Override
     public long getTotalRevenueInPeriod(final Date startDate, final Date endDate) {
         LOGGER.debug("Calculating total revenue for period: {} - {}", startDate, endDate);
-        TypedQuery<Long> query = entityManager.createQuery(
-            "SELECT COALESCE(SUM(o.totalPrice), 0) FROM Order o " +
+        
+        TypedQuery<Order> query = entityManager.createQuery(
+            "SELECT o FROM Order o " +
             "WHERE o.status = :status AND o.completionDate BETWEEN :startDate AND :endDate", 
-            Long.class);
+            Order.class);
         query.setParameter("status", OrderStatus.COMPLETED);
         query.setParameter("startDate", startDate);
         query.setParameter("endDate", endDate);
         
-        Long result = query.getSingleResult();
-        return result != null ? result : 0L;
+        List<Order> orders = query.getResultList();
+        
+        long totalRevenue = 0;
+        for (Order order : orders) {
+            totalRevenue += order.calculateTotalPrice();
+        }
+        
+        LOGGER.debug("Total revenue calculated: {} for {} orders", totalRevenue, orders.size());
+        return totalRevenue;
     }
     
     @Override
