@@ -2,6 +2,7 @@ package bookstore.app;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.annotation.Import; 
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
@@ -101,6 +102,7 @@ public class AppConfig {
      * @return the entity manager factory bean
      */
     @Bean
+    @DependsOn("flywayConfig")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             DataSource dataSource,
             HibernateJpaVendorAdapter jpaVendorAdapter,

@@ -49,10 +49,16 @@ public class FlywayConfig {
                     .validateOnMigrate(true)
                     .outOfOrder(false)
                     .load();
-            
-            MigrateResult migrationsCount = flyway.migrate();
-            
-            LOGGER.info("Flyway успешно выполнил {} миграций", migrationsCount.migrationsExecuted);
+            var info = flyway.info();
+            LOGGER.info("Текущая версия: {}", info.current() != null ? info.current().getVersion() : "none");
+            LOGGER.info("Ожидающие миграции: {}", info.pending().length);
+            if (info.pending().length > 0) {
+            	flyway.repair();
+                MigrateResult migrationsCount = flyway.migrate();
+                LOGGER.info("Flyway успешно выполнил {} миграций", migrationsCount.migrationsExecuted);
+            } else {
+                LOGGER.info("Нет ожидающих миграций");
+            }
             
         } catch (Exception e) {
             LOGGER.error("Ошибка при выполнении Flyway миграций", e);
