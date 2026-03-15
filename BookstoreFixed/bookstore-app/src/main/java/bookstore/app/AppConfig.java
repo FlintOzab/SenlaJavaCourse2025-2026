@@ -102,6 +102,7 @@ public class AppConfig {
      * @return the entity manager factory bean
      */
     @Bean
+    @DependsOn("flywayConfig")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             DataSource dataSource,
             HibernateJpaVendorAdapter jpaVendorAdapter,
