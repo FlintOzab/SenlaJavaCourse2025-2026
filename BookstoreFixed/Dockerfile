@@ -18,6 +18,7 @@ FROM tomcat:10.1-jdk17-temurin
 RUN rm -rf /usr/local/tomcat/webapps/*
 
 COPY --from=builder /app/bookstore-database/src/main/resources/migration /usr/local/tomcat/migration
+COPY --from=builder /app/AppConfig /usr/local/tomcat/AppConfig
 COPY --from=builder /app/bookstore-web/target/bookstore.war /usr/local/tomcat/webapps/ROOT.war
 
 EXPOSE 8080

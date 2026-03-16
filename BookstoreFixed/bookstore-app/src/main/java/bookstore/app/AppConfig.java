@@ -43,7 +43,7 @@ import java.util.Properties;
  */
 @Configuration
 @PropertySource("classpath:bookstore.properties")
-@PropertySource(value = "file:./config/bookstore.properties", ignoreResourceNotFound = true)
+@PropertySource(value = "file:./AppConfig/bookstore.properties", ignoreResourceNotFound = true)
 @EnableTransactionManagement
 @Import(FlywayConfig.class)
 public class AppConfig {
