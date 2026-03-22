@@ -38,31 +38,7 @@ public class WebAppInitializer implements WebApplicationInitializer {
         ServletRegistration.Dynamic dispatcher = servletContext.addServlet(
             "dispatcher", new DispatcherServlet(webContext));
         dispatcher.setLoadOnStartup(1);
-        dispatcher.addMapping(// BookController
-                "/api/books",
-                "/api/books/*",
-                "/api/books/stale",
-                
-                // OrderController
-                "/api/orders",
-                "/api/orders/*",
-                
-                // AnalyticsController
-                "/api/analytics/revenue",
-                "/api/analytics/completed-orders",
-                
-                // ConfigController
-                "/api/config",
-                "/api/config/stale-threshold",
-                "/api/config/auto-fulfill",
-                "/api/config/export-directory",
-                "/api/config/save",
-                
-                // CSVController
-                "/api/csv/export/books",
-                "/api/csv/import/books",
-                "/api/csv/export/orders", 
-                "/api/csv/import/orders");
+        dispatcher.addMapping("/");
         
         // Configure multipart for file uploads
         MultipartConfigElement multipartConfig = new MultipartConfigElement(
