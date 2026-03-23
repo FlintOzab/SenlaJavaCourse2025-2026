@@ -22,3 +22,5 @@ replay_pid*
 
 *.class
 *.bkp
+**/target
+

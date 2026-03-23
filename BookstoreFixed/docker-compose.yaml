@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bookstore-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bookstore-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookstore-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: ${POSTGRES_PORT}
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_URL: jdbc:postgresql://postgres:${POSTGRES_PORT}/${POSTGRES_DB}
+      AUTO_FULFILL_REQUESTS: ${AUTO_FULFILL_REQUESTS}
+      DEFAULT_BOOK_PRICE: ${DEFAULT_BOOK_PRICE}
+      EXPORT_DIRECTORY: "/app/exports/"
+      STALE_MONTHS_THRESHOLD: ${STALE_MONTHS_THRESHOLD}
+    ports:
+      - "${APP_PORT}:8080"
+    volumes:
+      - ./exports:/app/exports\
+    networks:
+      - bookstore-network
+
+volumes:
+  postgres_data:
+    name: bookstore-postgres-data
+
+networks:
+  bookstore-network:
+    name: bookstore-network
+    driver: bridge
