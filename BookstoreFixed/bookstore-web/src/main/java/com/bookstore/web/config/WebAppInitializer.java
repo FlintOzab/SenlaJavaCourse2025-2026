@@ -1,5 +1,6 @@
 package com.bookstore.web.config;
 
+import bookstore.app.AppConfig;
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
@@ -9,38 +10,41 @@ import org.springframework.web.context.ContextLoaderListener;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.DispatcherServlet;
 
-import bookstore.app.AppConfig;
-
 /**
- * Web application initializer for Servlet 3.0+ containers
+ * Web application initializer for the Bookstore application.
+ * Configures application context with all configurations.
+ * 
+ * @author Bookstore Team
+ * @version 1.0
  */
 public class WebAppInitializer implements WebApplicationInitializer {
     
     private static final String TEMP_LOCATION = "/tmp";
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-    private static final long MAX_REQUEST_SIZE = 20 * 1024 * 1024; // 20 MB
-    private static final int FILE_SIZE_THRESHOLD = 2 * 1024 * 1024; // 2 MB
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+    private static final long MAX_REQUEST_SIZE = 20 * 1024 * 1024;
+    private static final int FILE_SIZE_THRESHOLD = 2 * 1024 * 1024;
     
     @Override
-    public void onStartup(ServletContext servletContext) throws ServletException {
-        // Create root application context
-        AnnotationConfigWebApplicationContext rootContext = new AnnotationConfigWebApplicationContext();
-        rootContext.register(AppConfig.class);
+    public void onStartup(final ServletContext servletContext) throws ServletException {
+        // Create a single application context with all configurations
+        AnnotationConfigWebApplicationContext applicationContext = 
+                new AnnotationConfigWebApplicationContext();
         
-        // Manage the lifecycle of the root application context
-        servletContext.addListener(new ContextLoaderListener(rootContext));
+        // Register ALL configurations in the same context
+        applicationContext.register(AppConfig.class);
+        applicationContext.register(WebConfig.class);
+        applicationContext.register(SecurityConfig.class);
         
-        // Create dispatcher servlet context
-        AnnotationConfigWebApplicationContext webContext = new AnnotationConfigWebApplicationContext();
-        webContext.register(WebConfig.class);
-        webContext.setParent(rootContext);
-        // Register and map the dispatcher servlet
+        // Add listener to manage context lifecycle
+        servletContext.addListener(new ContextLoaderListener(applicationContext));
+        
+        // Register DispatcherServlet with the same context
         ServletRegistration.Dynamic dispatcher = servletContext.addServlet(
-            "dispatcher", new DispatcherServlet(webContext));
+            "dispatcher", new DispatcherServlet(applicationContext));
         dispatcher.setLoadOnStartup(1);
         dispatcher.addMapping("/");
         
-        // Configure multipart for file uploads
+        // Configure multipart support
         MultipartConfigElement multipartConfig = new MultipartConfigElement(
             TEMP_LOCATION, MAX_FILE_SIZE, MAX_REQUEST_SIZE, FILE_SIZE_THRESHOLD);
         dispatcher.setMultipartConfig(multipartConfig);

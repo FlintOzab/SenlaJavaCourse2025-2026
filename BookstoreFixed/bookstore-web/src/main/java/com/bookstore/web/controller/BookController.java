@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import bookstore.service.Bookstore;
 
@@ -65,7 +66,7 @@ public class BookController {
             @PathVariable String isbn) throws EntityNotFoundException {
         LOGGER.debug("REST request to get book by ISBN: {}", isbn);
         Optional<Book> book = bookstore.findBookByIsbn(isbn);
-        if (book == null) {
+        if (book == null || book.isEmpty()) {
             throw new EntityNotFoundException("Book not found with ISBN: " + isbn);
         }
         return ResponseEntity.ok(mapper.toBookDTO(book.get()));
