@@ -24,6 +24,8 @@ import bookstore.dao.jpa.JpaOrderDAO;
 import bookstore.dao.jpa.JpaOrderDAOInterface;
 import bookstore.dao.jpa.JpaRequestDAO;
 import bookstore.dao.jpa.JpaRequestDAOInterface;
+import bookstore.dao.jpa.JpaUserDAO;
+import bookstore.dao.jpa.JpaUserDAOInterface;
 import bookstore.service.Bookstore;
 import bookstore.service.CSVService;
 import bookstore.service.StateManager;
@@ -193,6 +195,16 @@ public class AppConfig {
     @Bean
     public JpaRequestDAOInterface jpaRequestDAO() {
         return new JpaRequestDAO();
+    }
+    
+    /**
+     * Creates JpaUserDAO bean.
+     * 
+     * @return the user DAO
+     */
+    @Bean
+    public JpaUserDAOInterface jpaUserDAO() {
+        return new JpaUserDAO();
     }
     
     /**
