@@ -1,0 +1,8 @@
+FROM alpine:latest
+
+RUN apk add --no-cache bash postgresql-client docker-cli
+WORKDIR /monitor
+COPY monitor.sh /monitor/monitor.sh
+RUN chmod +x /monitor/monitor.sh
+
+CMD ["/monitor/monitor.sh"]
