@@ -112,25 +112,18 @@ public class Bookstore {
      * @param bookIds the IDs of books to include
      * @return the created order
      * @throws BookstoreException if validation fails
+     * @throws EntityNotFoundException if a book is not found
      */
     @Transactional
-    public Order createOrder(final List<Integer> bookIds) throws BookstoreException {
+    public Order createOrder(final List<Integer> bookIds) throws BookstoreException, EntityNotFoundException {
         if (bookIds == null || bookIds.isEmpty()) {
             throw new ValidationException("Заказ должен содержать хотя бы одну книгу");
         }
         
         List<Book> books = bookIds.stream()
-            .map(id -> {
-				try {
-					return bookDAO.findById(id)
-					    .orElseThrow(() -> new EntityNotFoundException(
-					        "Книга с ID " + id + " не найдена"));
-				} catch (EntityNotFoundException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				return null;
-			})
+            .map(id -> bookDAO.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                    "Книга с ID " + id + " не найдена")))
             .toList();
         
         Order order = new Order(books);

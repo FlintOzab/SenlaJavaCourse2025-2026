@@ -7,7 +7,7 @@ package bookstore.exception;
  * @author Bookstore Team
  * @version 1.0
  */
-public class BookstoreException extends Exception {
+public class BookstoreException extends RuntimeException {
     
     /** Serial version UID. */
     private static final long serialVersionUID = 1L;
