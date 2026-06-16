@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<suppressions>
+    <!-- Suppress Javadoc for test classes -->
+    <suppress checks="JavadocPackage" files=".*[\\/]src[\\/]test[\\/].*"/>
+    <suppress checks="JavadocType" files=".*[\\/]src[\\/]test[\\/].*"/>
+    <suppress checks="JavadocVariable" files=".*[\\/]src[\\/]test[\\/].*"/>
+    <suppress checks="JavadocMethod" files=".*[\\/]src[\\/]test[\\/].*"/>
+    <suppress checks="MissingJavadocMethod" files=".*[\\/]src[\\/]test[\\/].*"/>
+    <suppress checks="MissingJavadocType" files=".*[\\/]src[\\/]test[\\/].*"/>
+    
+    <!-- Suppress for generated sources -->
+    <suppress checks=".*" files=".*[\\/]generated[\\/].*"/>
+    
+    <!-- Suppress specific checks for model classes -->
+    <suppress checks="ParameterNumber" files=".*[\\/]model[\\/].*\.java"/>
+    <suppress checks="HiddenField" files=".*[\\/]model[\\/].*\.java"/>
+    <suppress checks="MagicNumber" files=".*[\\/]model[\\/].*\.java"/>
+    
+    <!-- Suppress for test data and constants -->
+    <suppress checks="MagicNumber" files=".*[\\/]jdbc[\\/]Constants\.java"/>
+    <suppress checks="LineLength" files=".*[\\/]jdbc[\\/]Constants\.java"/>
+    
+    <!-- Suppress for configuration classes -->
+    <suppress checks="HideUtilityClassConstructor" 
+              files=".*[\\/]config[\\/].*\.java"/>
+    
+    <!-- Suppress for properties files -->
+    <suppress checks="RegexpSingleline" files=".*\.properties$"/>
+    <suppress checks="NewlineAtEndOfFile" files=".*\.properties$"/>
+    <suppress checks="FileLength" files=".*\.properties$"/>
+    <suppress checks="FileTabCharacter" files=".*\.properties$"/>
+    <suppress checks="Translation" files=".*\.properties$"/>
+    
+    <!-- Suppress for legacy code -->
+    <suppress checks="DesignForExtension" files=".*[\\/]service[\\/]Bookstore\.java"/>
+    <suppress checks="FinalClass" files=".*[\\/]Main\.java"/>
+    <suppress checks="UncommentedMain" files=".*[\\/]Main\.java"/>
+</suppressions>
